@@ -49,9 +49,22 @@ class MockChatRepository : BaseRepository() {
 
     suspend fun sendChatQuery(query: String): ApiResult<MessageUiModel> = safeApiCall {
         delay(1500L)
+        val cleanQuery = query.lowercase()
+        val contentText = when {
+            cleanQuery.contains("triết") || cleanQuery.contains("mác") -> {
+                "Dựa trên tài liệu Giáo trình Triết học Mác-Lênin, mối quan hệ biện chứng giữa vật chất và ý thức thể hiện ở việc vật chất quyết định ý thức, nhưng ý thức có tính độc lập tương đối và tác động ngược trở lại vật chất thông qua hoạt động thực tiễn [1]."
+            }
+            cleanQuery.contains("đồ án") || cleanQuery.contains("tốt nghiệp") -> {
+                "Về câu hỏi slide bảo vệ đồ án tốt nghiệp của bạn, quy trình chuẩn bị yêu cầu trình bày tóm tắt trong 15 phút, nêu bật kết quả nghiên cứu và cấu trúc sơ đồ triển khai hệ thống RAG [1]."
+            }
+            else -> {
+                "Tôi đã nhận được câu hỏi của bạn về: \"$query\". Dựa trên tài liệu Giáo trình Nhập môn AI [1], công nghệ RAG (Retrieval-Augmented Generation) hỗ trợ sinh viên nhanh chóng đối chiếu kiến thức trực tiếp và chuẩn xác."
+            }
+        }
+
         MessageUiModel(
             id = "msg_${System.currentTimeMillis()}",
-            content = "Trong lĩnh vực giáo dục, công nghệ RAG (Retrieval-Augmented Generation) cho phép hệ thống AI tra cứu trực tiếp vào các giáo trình, bài giảng và tài liệu của trường trước khi sinh câu trả lời. Điều này giúp sinh viên tiếp cận đúng kiến thức chuẩn của môn học, loại bỏ hoàn toàn tình trạng bịa thông tin (hallucination) thường gặp ở các AI thông thường.",
+            content = contentText,
             isFromUser = false,
             sendTime = "Vừa xong",
             citations = listOf(

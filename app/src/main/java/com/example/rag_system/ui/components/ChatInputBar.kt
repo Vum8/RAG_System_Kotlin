@@ -1,7 +1,10 @@
 package com.example.rag_system.ui.components
 
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +18,13 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,10 +40,12 @@ import com.example.rag_system.ui.theme.*
 @Composable
 fun ChatInputBar(
     inputText: String,
-    attachedFile: String?,
+    attachedFileNames: List<String>,
+    attachedFileUris: List<Uri>,
     onInputTextChanged: (String) -> Unit,
-    onRemoveAttachedFile: () -> Unit,
+    onRemoveAttachedFile: (Int) -> Unit,
     onSendClick: () -> Unit,
+    onAttachClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -42,43 +54,50 @@ fun ChatInputBar(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Hiển thị tài liệu đính kèm nếu có
-            AnimatedVisibility(
-                visible = attachedFile != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                if (attachedFile != null) {
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.DarkGray.copy(alpha = 0.8f))
+            // Danh sách tài liệu/hình ảnh đính kèm dạng hàng ngang LazyRow cuộn
+            if (attachedFileNames.isNotEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("📁", fontSize = 24.sp)
+                        itemsIndexed(attachedFileNames) { index, fileName ->
+                            val uri = attachedFileUris.getOrNull(index)
+                            AttachmentPreviewItem(
+                                fileName = fileName,
+                                fileUri = uri,
+                                onRemove = { onRemoveAttachedFile(index) }
+                            )
                         }
-                        // Nút Xóa ảnh/file đính kèm
-                        Box(
+                    }
+
+                    // Nếu có nhiều hơn 2 tệp, hiển thị chỉ báo vuốt ngang ở góc
+                    if (attachedFileNames.size > 2) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.Black.copy(alpha = 0.6f),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(2.dp)
-                                .size(18.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.6f))
-                                .clickable { onRemoveAttachedFile() },
-                            contentAlignment = Alignment.Center
+                                .padding(4.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Xóa",
-                                tint = Color.White,
-                                modifier = Modifier.size(10.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "↔",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "${attachedFileNames.size} tệp",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    fontSize = 9.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -97,7 +116,7 @@ fun ChatInputBar(
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .clickable { /* logic đính kèm */ },
+                        .clickable { onAttachClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Text("📎", fontSize = 18.sp)
@@ -148,3 +167,86 @@ fun ChatInputBar(
         }
     }
 }
+
+/**
+ * Ô vuông hiển thị xem trước tệp đính kèm (72.dp) ở thanh nhập liệu
+ */
+@Composable
+private fun AttachmentPreviewItem(
+    fileName: String,
+    fileUri: Uri?,
+    onRemove: () -> Unit
+) {
+    val context = LocalContext.current
+    val bitmap = remember(fileUri) {
+        if (fileUri != null) {
+            try {
+                context.contentResolver.openInputStream(fileUri)?.use {
+                    BitmapFactory.decodeStream(it)?.asImageBitmap()
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(BrandSurfaceContainerLow)
+            .border(1.dp, BrandBorderSubtle, RoundedCornerShape(8.dp))
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Preview",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = if (fileName.endsWith(".pdf", ignoreCase = true)) "📄" else "📁",
+                    fontSize = 22.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = fileName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BrandTextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // Nút Xóa nhỏ ở góc trên bên phải
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(16.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.6f))
+                .clickable { onRemove() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Xóa",
+                tint = Color.White,
+                modifier = Modifier.size(10.dp)
+            )
+        }
+    }
+}
+

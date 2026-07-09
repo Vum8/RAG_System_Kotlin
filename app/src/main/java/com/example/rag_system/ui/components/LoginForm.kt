@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,18 +38,18 @@ fun LoginForm(
     onForgotPasswordClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
-    var rememberMeChecked by remember { mutableStateOf(false) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
+    var rememberMeChecked by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(BrandSurface, RoundedCornerShape(12.dp))
             .border(1.dp, BrandBorderSubtle, RoundedCornerShape(12.dp))
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Tiêu đề đăng nhập
         Column(
@@ -76,24 +77,11 @@ fun LoginForm(
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = BrandOnSurfaceVariant
             )
-            OutlinedTextField(
+            EduRAGTextField(
                 value = email,
                 onValueChange = { email = it },
-                placeholder = { Text("Nhập email sinh viên", color = BrandOutlineVariant) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = null,
-                        tint = BrandTextSecondary
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimaryContainer,
-                    unfocusedBorderColor = BrandBorderSubtle
-                ),
-                singleLine = true,
+                placeholderText = "Nhập email sinh viên",
+                leadingIcon = Icons.Default.Email,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next
@@ -120,17 +108,11 @@ fun LoginForm(
                     modifier = Modifier.clickable { onForgotPasswordClick() }
                 )
             }
-            OutlinedTextField(
+            EduRAGTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = { Text("Nhập mật khẩu", color = BrandOutlineVariant) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = BrandTextSecondary
-                    )
-                },
+                placeholderText = "Nhập mật khẩu",
+                leadingIcon = Icons.Default.Lock,
                 trailingIcon = {
                     Text(
                         text = if (isPasswordVisible) "Ẩn" else "Hiện",
@@ -142,13 +124,6 @@ fun LoginForm(
                             .clickable { isPasswordVisible = !isPasswordVisible }
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimaryContainer,
-                    unfocusedBorderColor = BrandBorderSubtle
-                ),
-                singleLine = true,
                 visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
@@ -180,31 +155,19 @@ fun LoginForm(
             )
         }
 
-        // Nút Đăng nhập chính
-        Button(
+        // Nút Đăng nhập chính dùng EduRAGButton chung
+        EduRAGButton(
+            text = "Đăng nhập",
             onClick = { onLoginSubmitted(email, password, rememberMeChecked) },
             enabled = email.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimaryContainer)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Đăng nhập",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            modifier = Modifier.fillMaxWidth(),
+            trailingContent = {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
             }
-        }
+        )
     }
 }

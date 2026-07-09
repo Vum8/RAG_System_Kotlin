@@ -1,7 +1,11 @@
 package com.example.rag_system.ui.components
 
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,8 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,23 +79,184 @@ fun EduAiWelcomeMessage() {
 }
 
 @Composable
-fun EduUserMessageBubble(content: String) {
-    Row(
+fun EduUserMessageBubble(
+    content: String,
+    attachedFileNames: List<String> = emptyList(),
+    attachedFileUris: List<Uri> = emptyList()
+) {
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End
+        horizontalAlignment = Alignment.End
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
-            color = BrandPrimaryContainer,
-            shadowElevation = 0.5.dp
-        ) {
-            Text(
-                text = content,
-                color = BrandOnPrimary,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            )
+        // 1. Hiển thị tệp đính kèm bên ngoài bong bóng chat dạng hàng ngang LazyRow cuộn (giúp không rối tin nhắn)
+        if (attachedFileNames.isNotEmpty()) {
+            val context = LocalContext.current
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 8.dp)
+                    .align(Alignment.End)
+                    .widthIn(max = 280.dp) // Căn chỉnh kích thước LazyRow khớp với chiều rộng bong bóng chat chữ bên dưới
+            ) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    itemsIndexed(attachedFileNames) { index, fileName ->
+                        val uri = attachedFileUris.getOrNull(index)
+                        val isImage = remember(uri) {
+                            if (uri == null) false else {
+                                try {
+                                    context.contentResolver.openInputStream(uri)?.use {
+                                        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                                        BitmapFactory.decodeStream(it, null, options)
+                                        options.outMimeType?.startsWith("image/") == true
+                                    } ?: false
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                        }
+
+                        if (isImage && uri != null) {
+                            UserBubbleImageItem(fileUri = uri)
+                        } else {
+                            UserBubbleDocItem(fileName = fileName)
+                        }
+                    }
+                }
+
+                // Nếu có nhiều hơn 1 tệp, hiển thị chỉ báo vuốt ngang góc trên bên phải
+                if (attachedFileNames.size > 1) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.Black.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "↔",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${attachedFileNames.size} tệp",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
+
+        // 2. Bong bóng chứa TIN NHẮN CHỮ (chỉ vẽ nếu content khác trống)
+        if (content.isNotBlank()) {
+            var isExpanded by remember { mutableStateOf(false) }
+            val showTextToggle = content.length > 250
+            val displayText = if (showTextToggle && !isExpanded) {
+                content.take(220) + "..."
+            } else {
+                content
+            }
+
+            Surface(
+                shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
+                color = BrandPrimaryContainer,
+                shadowElevation = 0.5.dp,
+                modifier = Modifier.widthIn(max = 280.dp) // Giới hạn chiều ngang để bong bóng luôn gọn gàng cân đối
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = displayText,
+                        color = BrandOnPrimary,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                    if (showTextToggle) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (isExpanded) "Thu gọn" else "Xem thêm",
+                            color = BrandOnPrimary.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier
+                                .clickable { isExpanded = !isExpanded }
+                                .align(Alignment.End)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Hiển thị ảnh đính kèm của User ngoài bóng chat
+ */
+@Composable
+private fun UserBubbleImageItem(fileUri: Uri) {
+    val context = LocalContext.current
+    val bitmap = remember(fileUri) {
+        try {
+            context.contentResolver.openInputStream(fileUri)?.use {
+                BitmapFactory.decodeStream(it)?.asImageBitmap()
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = "Attached Image",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .width(140.dp)
+                .height(100.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, BrandBorderSubtle, RoundedCornerShape(10.dp))
+        )
+    }
+}
+
+/**
+ * Hiển thị tài liệu đính kèm của User ngoài bóng chat dạng thẻ ngang
+ */
+@Composable
+private fun UserBubbleDocItem(fileName: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(100.dp)
+            .background(BrandSurfaceContainerLow, RoundedCornerShape(10.dp))
+            .border(1.dp, BrandBorderSubtle, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp)
+            .widthIn(max = 180.dp)
+    ) {
+        Text(
+            text = if (fileName.endsWith(".pdf", ignoreCase = true)) "📄" else "📁",
+            fontSize = 22.sp
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = fileName,
+            color = BrandTextPrimary,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -102,6 +271,14 @@ fun EduAiDetailedResponse(
     onSourceClick: (SourceCitationUiModel) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var isExpanded by remember { mutableStateOf(false) }
+    val showTextToggle = content.length > 350
+    val activeContent = if (showTextToggle && !isExpanded) {
+        content.take(300) + "..."
+    } else {
+        content
+    }
+
     // Sinh bộ InlineTextContent động dựa trên số lượng nguồn trích dẫn
     val inlineContentMap = remember(citations) {
         citations.mapIndexed { index, _ ->
@@ -131,11 +308,11 @@ fun EduAiDetailedResponse(
     }
 
     // Tự động phân tách và chèn các pin số vào AnnotatedString
-    val responseText = remember(content, citations) {
+    val responseText = remember(activeContent, citations) {
         buildAnnotatedString {
             val regex = Regex("\\[(\\d+)\\]")
-            val matches = regex.findAll(content).toList()
-            val parts = content.split(regex)
+            val matches = regex.findAll(activeContent).toList()
+            val parts = activeContent.split(regex)
 
             parts.forEachIndexed { index, part ->
                 append(part)
@@ -163,6 +340,16 @@ fun EduAiDetailedResponse(
                 style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
                 color = BrandTextPrimary
             )
+
+            if (showTextToggle) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isExpanded) "Thu gọn" else "Xem thêm",
+                    color = BrandPrimary,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.clickable { isExpanded = !isExpanded }
+                )
+            }
 
             // Danh sách các Card nguồn trích dẫn động
             if (citations.isNotEmpty()) {

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +24,7 @@ import com.example.rag_system.ui.theme.*
 
 /**
  * Thanh Bottom Navigation Bar của EduRAG (Component Modularization).
+ * Hỗ trợ tô đậm làm nổi bật capsule đồng bộ cho tất cả các Tab khi hoạt động.
  */
 @Composable
 fun EduRAGBottomNavBar(
@@ -43,74 +45,78 @@ fun EduRAGBottomNavBar(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Tab 1: Chat (Dạng capsule nằm ngang)
-            val isChat = currentTab == "chat"
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = if (isChat) BrandSecondaryContainer else Color.Transparent,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { onTabSelected("chat") }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("💬", fontSize = 16.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Chat",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (isChat) BrandOnSecondaryContainer else BrandTextSecondary
-                    )
-                }
-            }
+            // Tab 1: Chat
+            BottomNavItem(
+                label = "Chat",
+                iconEmoji = "💬",
+                iconVector = null,
+                isActive = currentTab == "chat",
+                onClick = { onTabSelected("chat") }
+            )
 
             // Tab 2: Lịch sử
-            val isHistory = currentTab == "history"
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable { onTabSelected("history") }
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Lịch sử",
-                    tint = BrandTextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Lịch sử",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                    color = BrandTextSecondary
-                )
-            }
+            BottomNavItem(
+                label = "Lịch sử",
+                iconEmoji = null,
+                iconVector = Icons.Default.Refresh,
+                isActive = currentTab == "history",
+                onClick = { onTabSelected("history") }
+            )
 
             // Tab 3: Tài liệu
-            val isDocs = currentTab == "documents"
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable { onTabSelected("documents") }
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.List,
-                    contentDescription = "Tài liệu",
-                    tint = BrandTextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+            BottomNavItem(
+                label = "Tài liệu",
+                iconEmoji = null,
+                iconVector = Icons.AutoMirrored.Filled.List,
+                isActive = currentTab == "documents",
+                onClick = { onTabSelected("documents") }
+            )
+        }
+    }
+}
+
+/**
+ * Helper component hiển thị thống nhất cấu trúc cho mỗi Tab dưới dạng Capsule khi active
+ */
+@Composable
+private fun BottomNavItem(
+    label: String,
+    iconEmoji: String?,
+    iconVector: ImageVector?,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = if (isActive) BrandSecondaryContainer else Color.Transparent,
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (iconEmoji != null) {
                 Text(
-                    text = "Tài liệu",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                    color = BrandTextSecondary
+                    text = iconEmoji,
+                    fontSize = 16.sp
+                )
+            } else if (iconVector != null) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = label,
+                    tint = if (isActive) BrandOnSecondaryContainer else BrandTextSecondary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (isActive) BrandOnSecondaryContainer else BrandTextSecondary
+            )
         }
     }
 }

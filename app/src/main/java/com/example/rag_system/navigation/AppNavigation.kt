@@ -12,8 +12,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.rag_system.ui.screens.auth.ForgotPasswordScreen
 import com.example.rag_system.ui.screens.auth.LoginScreen
 import com.example.rag_system.ui.screens.user.ChatScreen
+import com.example.rag_system.ui.screens.user.LibraryScreen
+import com.example.rag_system.ui.screens.user.MainTabScreen
 import com.example.rag_system.ui.viewmodels.ChatViewModel
 
 /**
@@ -40,7 +43,7 @@ fun AppNavigation(
                     }
                 },
                 onForgotPasswordClick = {
-                    Toast.makeText(context, "Chức năng quên mật khẩu", Toast.LENGTH_SHORT).show()
+                    navController.navigate(Screen.ForgotPassword.route)
                 },
                 onGoogleLoginClick = {
                     Toast.makeText(context, "Đăng nhập bằng Google thành công!", Toast.LENGTH_SHORT).show()
@@ -54,34 +57,28 @@ fun AppNavigation(
             )
         }
 
-        composable(Screen.Chat.route) {
-            // Khởi tạo ViewModel và quan sát các trạng thái bằng collectAsState
-            val chatViewModel = remember { ChatViewModel() }
-            val currentChatState by chatViewModel.currentChatState.collectAsState()
-            val chatHistoryState by chatViewModel.chatHistoryState.collectAsState()
-
-            ChatScreen(
-                currentChatState = currentChatState,
-                chatHistoryState = chatHistoryState,
-                onSendMessage = { query ->
-                    chatViewModel.sendChatQuery(query)
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                onSendLinkSubmitted = { email ->
+                    Toast.makeText(context, "Đã gửi link đặt lại mật khẩu vào: $email", Toast.LENGTH_LONG).show()
+                    navController.popBackStack()
                 },
-                onBackClick = {
-                    Toast.makeText(context, "Quay lại màn hình trước", Toast.LENGTH_SHORT).show()
-                },
-                onSourceClick = { citation ->
-                    Toast.makeText(
-                        context,
-                        "Mở nguồn trích dẫn:\n${citation.sourceDocumentName} (Trang ${citation.pageNumber})",
-                        Toast.LENGTH_LONG
-                    ).show()
-                },
-                modifier = Modifier.fillMaxSize()
+                onBackToLoginClick = {
+                    navController.popBackStack()
+                }
             )
         }
 
-        composable(Screen.Library.route) {
-            // Hốc hiển thị thư viện tài liệu
+        composable(Screen.Chat.route) {
+            val chatViewModel = remember { ChatViewModel() }
+
+            MainTabScreen(
+                chatViewModel = chatViewModel,
+                onBackClick = {
+                    Toast.makeText(context, "Quay lại màn hình trước", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         composable(Screen.Profile.route) {

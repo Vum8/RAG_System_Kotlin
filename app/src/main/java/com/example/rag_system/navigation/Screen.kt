@@ -5,7 +5,9 @@ package com.example.rag_system.navigation
  */
 sealed class Screen(val route: String) {
     data object Login : Screen("login_screen")
+    data object ForgotPassword : Screen("forgot_password_screen")
     data object Chat : Screen("chat_screen")
+    data object DocumentReader : Screen("document_reader_screen")
     data object Library : Screen("library_screen")
     data object Profile : Screen("profile_screen")
 }
