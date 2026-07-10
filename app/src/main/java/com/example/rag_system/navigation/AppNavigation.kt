@@ -15,6 +15,9 @@ import com.example.rag_system.data.session.SessionEvent
 import com.example.rag_system.data.session.SessionEventBus
 import com.example.rag_system.ui.screens.auth.ForgotPasswordScreen
 import com.example.rag_system.ui.screens.auth.LoginScreen
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import com.example.rag_system.ui.screens.user.DocumentReaderScreen
 import com.example.rag_system.ui.screens.user.MainTabScreen
 import com.example.rag_system.ui.screens.user.ProfileScreen
 import com.example.rag_system.ui.viewmodels.ChatViewModel
@@ -99,6 +102,9 @@ fun AppNavigation(
                 onProfileClick = {
                     navController.navigate(Screen.Profile.route)
                 },
+                onDocumentClick = { documentId ->
+                    navController.navigate("document_reader_screen/$documentId")
+                },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -112,6 +118,20 @@ fun AppNavigation(
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true } // Xóa toàn bộ stack và chuyển về màn hình đăng nhập
                     }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        composable(
+            route = Screen.DocumentReader.route,
+            arguments = listOf(navArgument("documentId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val documentId = backStackEntry.arguments?.getString("documentId") ?: ""
+            DocumentReaderScreen(
+                documentId = documentId,
+                onBackClick = {
+                    navController.popBackStack()
                 },
                 modifier = Modifier.fillMaxSize()
             )

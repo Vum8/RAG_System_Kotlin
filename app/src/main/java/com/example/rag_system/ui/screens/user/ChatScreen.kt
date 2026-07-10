@@ -165,6 +165,13 @@ private fun getFileNameFromUri(context: Context, uri: Uri): String? {
 fun ChatScreen(
     currentChatState: UiLoadState<MessageUiModel>,
     chatHistoryState: UiLoadState<List<ChatSessionUiModel>>,
+    inputText: String,
+    onInputTextChanged: (String) -> Unit,
+    attachedFileNames: List<String>,
+    attachedFileUris: List<Uri>,
+    onAddAttachment: (String, Uri) -> Unit,
+    onRemoveAttachment: (Int) -> Unit,
+    onClearAttachments: () -> Unit,
     onSendMessage: (String) -> Unit,
     onBackClick: () -> Unit,
     onSourceClick: (SourceCitationUiModel) -> Unit,
@@ -173,11 +180,6 @@ fun ChatScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var inputText by rememberSaveable { mutableStateOf("") }
-
-    // Quản lý danh sách nhiều tệp đính kèm bằng mutableStateListOf
-    val attachedFiles = remember { mutableStateListOf<String>() }
-    val attachedFileUris = remember { mutableStateListOf<Uri>() }
     var showAppInfo by rememberSaveable { mutableStateOf(false) }
 
     // Danh sách toàn bộ tin nhắn (User và AI) trong phiên chat hiện tại
@@ -198,11 +200,8 @@ fun ChatScreen(
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             uris.forEach { uri ->
-                val fileName = getFileNameFromUri(context, uri) ?: "Tài liệu_Đính_Kèm.pdf"
-                if (!attachedFileUris.contains(uri)) {
-                    attachedFiles.add(fileName)
-                    attachedFileUris.add(uri)
-                }
+                val fileName = getFileNameFromUri(context, uri) ?: "Tài_liệu_Đính_Kèm.pdf"
+                onAddAttachment(fileName, uri)
             }
             Toast.makeText(context, "Đã thêm ${uris.size} tệp đính kèm", Toast.LENGTH_SHORT).show()
         }
@@ -293,42 +292,32 @@ fun ChatScreen(
                 Column {
                     ChatInputBar(
                         inputText = inputText,
-                        attachedFileNames = attachedFiles,
+                        attachedFileNames = attachedFileNames,
                         attachedFileUris = attachedFileUris,
-                        onInputTextChanged = { inputText = it },
-                        onRemoveAttachedFile = { index ->
-                            if (index in attachedFiles.indices) {
-                                attachedFiles.removeAt(index)
-                                attachedFileUris.removeAt(index)
-                            }
-                        },
+                        onInputTextChanged = onInputTextChanged,
+                        onRemoveAttachedFile = { index -> onRemoveAttachment(index) },
                         onSendClick = {
                             val query = inputText.trim()
-                            if (query.isNotEmpty() || attachedFiles.isNotEmpty()) {
-                                // Nếu chỉ gửi file mà không có text, tạo query fallback mô tả số lượng file
-                                val fileCount = attachedFiles.size
+                            if (query.isNotEmpty() || attachedFileNames.isNotEmpty()) {
+                                val fileCount = attachedFileNames.size
                                 val effectiveQuery = if (query.isNotEmpty()) query
-                                    else if (fileCount == 1) "Tôi vừa đính kèm 1 tệp: ${attachedFiles[0]}. Hãy phân tích giúp tôi."
+                                    else if (fileCount == 1) "Tôi vừa đính kèm 1 tệp: ${attachedFileNames[0]}. Hãy phân tích giúp tôi."
                                     else "Tôi vừa đính kèm $fileCount tệp. Hãy phân tích giúp tôi."
 
-                                // 1. Tạo tin nhắn người dùng và thêm trực tiếp vào danh sách hiển thị
                                 val userMsg = MessageUiModel(
                                     id = "user_${System.currentTimeMillis()}",
                                     content = effectiveQuery,
                                     isFromUser = true,
                                     sendTime = "Vừa xong",
-                                    attachedFileNames = attachedFiles.toList(),
+                                    attachedFileNames = attachedFileNames.toList(),
                                     attachedFileUris = attachedFileUris.toList()
                                 )
                                 activeMessages.add(userMsg)
-
-                                // 2. Kích hoạt sự kiện gửi lên ViewModel với query hiệu quả
                                 onSendMessage(effectiveQuery)
 
-                                // 3. Reset thanh nhập liệu
-                                inputText = ""
-                                attachedFiles.clear()
-                                attachedFileUris.clear()
+                                // Reset thanh nhập liệu
+                                onInputTextChanged("")
+                                onClearAttachments()
                             }
                         },
                         onAttachClick = {
@@ -553,6 +542,13 @@ fun EduRAGPreview() {
         ChatScreen(
             currentChatState = UiLoadState.Idle,
             chatHistoryState = UiLoadState.Idle,
+            inputText = "",
+            onInputTextChanged = {},
+            attachedFileNames = emptyList(),
+            attachedFileUris = emptyList(),
+            onAddAttachment = { _, _ -> },
+            onRemoveAttachment = {},
+            onClearAttachments = {},
             onSendMessage = {},
             onBackClick = {},
             onSourceClick = {},

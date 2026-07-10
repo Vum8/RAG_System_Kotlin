@@ -18,6 +18,7 @@ fun MainTabScreen(
     chatViewModel: ChatViewModel,
     onBackClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onDocumentClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -25,6 +26,7 @@ fun MainTabScreen(
 
     val currentChatState by chatViewModel.currentChatState.collectAsState()
     val chatHistoryState by chatViewModel.chatHistoryState.collectAsState()
+    val draftInputText = chatViewModel.draftInputText
 
     Crossfade(
         targetState = currentTab,
@@ -36,6 +38,13 @@ fun MainTabScreen(
                 ChatScreen(
                     currentChatState = currentChatState,
                     chatHistoryState = chatHistoryState,
+                    inputText = draftInputText,
+                    onInputTextChanged = { chatViewModel.updateDraftInput(it) },
+                    attachedFileNames = chatViewModel.draftAttachedFileNames,
+                    attachedFileUris = chatViewModel.draftAttachedFileUris,
+                    onAddAttachment = { name, uri -> chatViewModel.addAttachment(name, uri) },
+                    onRemoveAttachment = { index -> chatViewModel.removeAttachment(index) },
+                    onClearAttachments = { chatViewModel.clearAttachments() },
                     onSendMessage = { query ->
                         chatViewModel.sendChatQuery(query)
                     },
@@ -66,9 +75,7 @@ fun MainTabScreen(
             }
             "documents" -> {
                 LibraryScreen(
-                    onDocumentClick = { documentId ->
-                        Toast.makeText(context, "Mở tài liệu: $documentId", Toast.LENGTH_SHORT).show()
-                    },
+                    onDocumentClick = onDocumentClick,
                     onTabSelected = { selectedTab ->
                         currentTab = selectedTab
                     },
