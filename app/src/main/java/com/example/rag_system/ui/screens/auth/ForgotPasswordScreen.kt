@@ -53,19 +53,19 @@ fun ForgotPasswordScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(56.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(BrandPrimaryContainer),
+                            .background(BrandPrimary),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("🎓", fontSize = 28.sp)
+                        Text("🎓", fontSize = 32.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "EduRAG",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = BrandPrimaryContainer
+                        color = BrandPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(

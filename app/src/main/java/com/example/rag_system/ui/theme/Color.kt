@@ -24,3 +24,13 @@ val BrandOnSurfaceVariant = Color(0xFF464555)
 val BrandSecondaryContainer = Color(0xFFD1E1FA)
 val BrandOnSecondaryContainer = Color(0xFF556479)
 val BrandOutlineVariant = Color(0xFFC7C4D7)
+
+// Màu bổ sung cho màn hình Lịch sử Chat
+val BrandSurfaceContainer = Color(0xFFEFECF9)
+val BrandPrimaryFixed = Color(0xFFE1E0FF)
+val BrandTertiaryFixed = Color(0xFFFFDBC8)
+val BrandTertiary = Color(0xFF904400)
+val BrandSecondaryFixed = Color(0xFFD4E4FC)
+val BrandErrorDestructive = Color(0xFFFF4D4F)
+val BrandSurfaceContainerHighest = Color(0xFFE4E1ED)
+val BrandOutline = Color(0xFF767586)

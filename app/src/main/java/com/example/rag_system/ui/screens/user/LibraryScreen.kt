@@ -51,6 +51,7 @@ private val mockDocuments = listOf(
 fun LibraryScreen(
     onDocumentClick: (String) -> Unit,
     onTabSelected: (String) -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -74,12 +75,12 @@ fun LibraryScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(BrandPrimary.copy(alpha = 0.1f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("🎓", fontSize = 16.sp)
+                            Text("🎓", fontSize = 18.sp)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -101,7 +102,7 @@ fun LibraryScreen(
                             .padding(end = 12.dp)
                             .size(36.dp)
                             .clickable {
-                                Toast.makeText(context, "Mở hồ sơ cá nhân", Toast.LENGTH_SHORT).show()
+                                onProfileClick()
                             }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
