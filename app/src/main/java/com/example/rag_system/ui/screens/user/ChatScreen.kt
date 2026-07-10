@@ -178,6 +178,7 @@ fun ChatScreen(
     // Quản lý danh sách nhiều tệp đính kèm bằng mutableStateListOf
     val attachedFiles = remember { mutableStateListOf<String>() }
     val attachedFileUris = remember { mutableStateListOf<Uri>() }
+    var showAppInfo by rememberSaveable { mutableStateOf(false) }
 
     // Danh sách toàn bộ tin nhắn (User và AI) trong phiên chat hiện tại
     val activeMessages = remember { mutableStateListOf<MessageUiModel>() }
@@ -248,19 +249,41 @@ fun ChatScreen(
                         }
                     },
                     actionContent = {
-                        Surface(
-                            shape = CircleShape,
-                            color = BrandSurfaceContainerLow,
-                            border = BorderStroke(1.5.dp, BrandPrimary),
-                            modifier = Modifier
-                                .padding(end = 12.dp)
-                                .size(36.dp)
-                                .clickable {
-                                    onProfileClick()
-                                }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("A", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 14.sp)
+                            // Nút thông tin ℹ️ mở AppInfoBottomSheet
+                            Surface(
+                                shape = CircleShape,
+                                color = BrandSurfaceContainerLow,
+                                border = BorderStroke(1.dp, BrandBorderSubtle),
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clickable {
+                                        showAppInfo = true
+                                    }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("ℹ️", fontSize = 14.sp)
+                                }
+                            }
+
+                            // Avatar người dùng
+                            Surface(
+                                shape = CircleShape,
+                                color = BrandSurfaceContainerLow,
+                                border = BorderStroke(1.5.dp, BrandPrimary),
+                                modifier = Modifier
+                                    .padding(end = 12.dp)
+                                    .size(36.dp)
+                                    .clickable {
+                                        onProfileClick()
+                                    }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("A", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 14.sp)
+                                }
                             }
                         }
                     }
@@ -509,6 +532,16 @@ fun ChatScreen(
                     )
                 }
             }
+        }
+
+        // BottomSheet giới thiệu trường/app và đánh giá
+        if (showAppInfo) {
+            AppInfoBottomSheet(
+                onDismissRequest = { showAppInfo = false },
+                onSendFeedback = { rating, comment ->
+                    Toast.makeText(context, "Cảm ơn bạn đã đánh giá $rating sao cho EduRAG!", Toast.LENGTH_LONG).show()
+                }
+            )
         }
     }
 }
