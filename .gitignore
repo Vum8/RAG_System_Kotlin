@@ -1,15 +1,40 @@
+# Gradle files
+.gradle/
+build/
+**/build/
+
+# Kotlin
+.kotlin/
+
+# IDE - Android Studio / IntelliJ IDEA / VS Code
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
+*.ipr
+*.iws
+.vscode/
+
+# Local configuration & Secrets (Chứa SDK path, API keys, tokens)
+local.properties
+secrets.properties
+signing.properties
+*.properties.local
+
+# Keystores & Security Keys
+*.jks
+*.keystore
+*.pepk
+*.pk8
+*.pem
+*.p12
+*.der
+google-services.json
+
+# Captures, C++ build & Logs
 /captures
 .externalNativeBuild
-.cxx
-local.properties
+.cxx/
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
