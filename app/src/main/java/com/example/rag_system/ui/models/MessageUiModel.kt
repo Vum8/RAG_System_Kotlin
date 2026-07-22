@@ -1,7 +1,5 @@
 package com.example.rag_system.ui.models
 
-import android.net.Uri
-
 /**
  * UI Model đại diện cho một tin nhắn trong khung trò chuyện của EduRAG (từ người dùng hoặc từ trợ lý AI).
  */
@@ -10,7 +8,5 @@ data class MessageUiModel(
     val content: String = "",
     val isFromUser: Boolean = true,
     val sendTime: String = "",
-    val citations: List<SourceCitationUiModel> = emptyList(),
-    val attachedFileNames: List<String> = emptyList(),
-    val attachedFileUris: List<Uri> = emptyList()
+    val citations: List<SourceCitationUiModel> = emptyList()
 )

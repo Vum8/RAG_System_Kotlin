@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.rag_system.data.repository.MockDocumentRepository
+import com.example.rag_system.data.repository.DocumentRepository
 import com.example.rag_system.ui.models.SourceCitationUiModel
 import com.example.rag_system.ui.theme.*
 
@@ -36,7 +36,7 @@ fun DocumentReaderBottomSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { MockDocumentRepository() }
+    val repository = remember { DocumentRepository() }
 
     var currentPage by rememberSaveable { mutableIntStateOf(citation.pageNumber ?: 45) }
     var bookmarkedPages by rememberSaveable { mutableStateOf(listOf<Int>()) }

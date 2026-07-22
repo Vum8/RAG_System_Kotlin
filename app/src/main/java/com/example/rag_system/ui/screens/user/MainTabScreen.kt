@@ -8,10 +8,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.rag_system.ui.viewmodels.ChatViewModel
+import com.example.rag_system.ui.viewmodels.DocumentViewModel
 
 /**
  * Màn hình chứa Tab chính (MainTabScreen) quản lý việc chuyển đổi giữa Chat, Lịch sử và Thư viện.
- * Sử dụng Crossfade để chuyển đổi tức thời và mượt mà, không bị lag vẽ giao diện.
+ * Tích hợp đầy đủ [ChatViewModel] và [DocumentViewModel] theo chuẩn MVVM Stateless UI.
  */
 @Composable
 fun MainTabScreen(
@@ -26,7 +27,11 @@ fun MainTabScreen(
 
     val currentChatState by chatViewModel.currentChatState.collectAsState()
     val chatHistoryState by chatViewModel.chatHistoryState.collectAsState()
+    val sessionMessagesState by chatViewModel.sessionMessagesState.collectAsState()
     val draftInputText = chatViewModel.draftInputText
+
+    val documentViewModel = remember { DocumentViewModel() }
+    val libraryState by documentViewModel.libraryState.collectAsState()
 
     Crossfade(
         targetState = currentTab,
@@ -38,13 +43,9 @@ fun MainTabScreen(
                 ChatScreen(
                     currentChatState = currentChatState,
                     chatHistoryState = chatHistoryState,
+                    sessionMessagesState = sessionMessagesState,
                     inputText = draftInputText,
                     onInputTextChanged = { chatViewModel.updateDraftInput(it) },
-                    attachedFileNames = chatViewModel.draftAttachedFileNames,
-                    attachedFileUris = chatViewModel.draftAttachedFileUris,
-                    onAddAttachment = { name, uri -> chatViewModel.addAttachment(name, uri) },
-                    onRemoveAttachment = { index -> chatViewModel.removeAttachment(index) },
-                    onClearAttachments = { chatViewModel.clearAttachments() },
                     onSendMessage = { query ->
                         chatViewModel.sendChatQuery(query)
                     },
@@ -66,7 +67,10 @@ fun MainTabScreen(
                         currentTab = selectedTab
                     },
                     onSessionClick = { session ->
-                        Toast.makeText(context, "Mở phiên: ${session.title}", Toast.LENGTH_SHORT).show()
+                        val sessionId = session.id.toLongOrNull() ?: 0L
+                        if (sessionId > 0L) {
+                            chatViewModel.loadSessionMessages(sessionId)
+                        }
                         currentTab = "chat"
                     },
                     onProfileClick = onProfileClick,
@@ -75,6 +79,10 @@ fun MainTabScreen(
             }
             "documents" -> {
                 LibraryScreen(
+                    libraryState = libraryState,
+                    onReloadLibrary = {
+                        documentViewModel.loadLibraryDocuments()
+                    },
                     onDocumentClick = onDocumentClick,
                     onTabSelected = { selectedTab ->
                         currentTab = selectedTab
@@ -84,10 +92,8 @@ fun MainTabScreen(
                 )
             }
             else -> {
-                Toast.makeText(context, "Tính năng đang được phát triển!", Toast.LENGTH_SHORT).show()
                 currentTab = "chat"
             }
         }
     }
 }
-

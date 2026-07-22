@@ -1,7 +1,7 @@
 package com.example.rag_system.ui.viewmodels
 
 import com.example.rag_system.data.api.core.ApiResult
-import com.example.rag_system.data.repository.MockDocumentRepository
+import com.example.rag_system.data.repository.DocumentRepository
 import com.example.rag_system.ui.models.DocumentUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
  */
 class DocumentRouteDelegate(
     private val scope: CoroutineScope,
-    private val documentRepository: MockDocumentRepository = MockDocumentRepository()
+    private val documentRepository: DocumentRepository = DocumentRepository()
 ) {
     private val _libraryState = MutableStateFlow<UiLoadState<List<DocumentUiModel>>>(UiLoadState.Idle)
     val libraryState: StateFlow<UiLoadState<List<DocumentUiModel>>> = _libraryState.asStateFlow()
@@ -39,5 +39,12 @@ class DocumentRouteDelegate(
                 }
             }
         }
+    }
+
+    fun getPageContent(page: Int) = documentRepository.getDocumentPageContent(page)
+
+    fun getDocumentTitleById(docId: String): String {
+        val currentDocs = (_libraryState.value as? UiLoadState.Success)?.data ?: emptyList()
+        return currentDocs.find { it.id == docId }?.title ?: "Tài liệu EduRAG (#$docId)"
     }
 }

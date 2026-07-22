@@ -80,85 +80,12 @@ fun EduAiWelcomeMessage() {
 
 @Composable
 fun EduUserMessageBubble(
-    content: String,
-    attachedFileNames: List<String> = emptyList(),
-    attachedFileUris: List<Uri> = emptyList()
+    content: String
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.End
     ) {
-        // 1. Hiển thị tệp đính kèm bên ngoài bong bóng chat dạng hàng ngang LazyRow cuộn (giúp không rối tin nhắn)
-        if (attachedFileNames.isNotEmpty()) {
-            val context = LocalContext.current
-            Box(
-                modifier = Modifier
-                    .padding(bottom = 8.dp)
-                    .align(Alignment.End)
-                    .widthIn(max = 280.dp) // Căn chỉnh kích thước LazyRow khớp với chiều rộng bong bóng chat chữ bên dưới
-            ) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    itemsIndexed(attachedFileNames) { index, fileName ->
-                        val uri = attachedFileUris.getOrNull(index)
-                        val isImage = remember(uri) {
-                            if (uri == null) false else {
-                                try {
-                                    context.contentResolver.openInputStream(uri)?.use {
-                                        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                                        BitmapFactory.decodeStream(it, null, options)
-                                        options.outMimeType?.startsWith("image/") == true
-                                    } ?: false
-                                } catch (e: Exception) {
-                                    false
-                                }
-                            }
-                        }
-
-                        if (isImage && uri != null) {
-                            UserBubbleImageItem(fileUri = uri)
-                        } else {
-                            UserBubbleDocItem(fileName = fileName)
-                        }
-                    }
-                }
-
-                // Nếu có nhiều hơn 1 tệp, hiển thị chỉ báo vuốt ngang góc trên bên phải
-                if (attachedFileNames.size > 1) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color.Black.copy(alpha = 0.6f),
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(6.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "↔",
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${attachedFileNames.size} tệp",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Bong bóng chứa TIN NHẮN CHỮ (chỉ vẽ nếu content khác trống)
         if (content.isNotBlank()) {
             var isExpanded by remember { mutableStateOf(false) }
             val showTextToggle = content.length > 250
@@ -201,64 +128,6 @@ fun EduUserMessageBubble(
     }
 }
 
-/**
- * Hiển thị ảnh đính kèm của User ngoài bóng chat
- */
-@Composable
-private fun UserBubbleImageItem(fileUri: Uri) {
-    val context = LocalContext.current
-    val bitmap = remember(fileUri) {
-        try {
-            context.contentResolver.openInputStream(fileUri)?.use {
-                BitmapFactory.decodeStream(it)?.asImageBitmap()
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap,
-            contentDescription = "Attached Image",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .width(140.dp)
-                .height(100.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, BrandBorderSubtle, RoundedCornerShape(10.dp))
-        )
-    }
-}
-
-/**
- * Hiển thị tài liệu đính kèm của User ngoài bóng chat dạng thẻ ngang
- */
-@Composable
-private fun UserBubbleDocItem(fileName: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .height(100.dp)
-            .background(BrandSurfaceContainerLow, RoundedCornerShape(10.dp))
-            .border(1.dp, BrandBorderSubtle, RoundedCornerShape(10.dp))
-            .padding(horizontal = 12.dp)
-            .widthIn(max = 180.dp)
-    ) {
-        Text(
-            text = if (fileName.endsWith(".pdf", ignoreCase = true)) "📄" else "📁",
-            fontSize = 22.sp
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = fileName,
-            color = BrandTextPrimary,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-            maxLines = 2,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-        )
-    }
-}
 
 /**
  * Hiển thị câu trả lời chi tiết từ AI.

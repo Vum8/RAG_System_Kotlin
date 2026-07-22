@@ -22,54 +22,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.components.*
+import com.example.rag_system.ui.models.DocumentFileFormat
+import com.example.rag_system.ui.models.DocumentUiModel
+import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
 
-// Lớp dữ liệu mô phỏng tài liệu thư viện
-data class LibraryDocument(
-    val id: String,
-    val title: String,
-    val category: String,
-    val info: String,
-    val bannerColor: Color,
-    val iconEmoji: String
-)
-
-private val mockDocuments = listOf(
-    LibraryDocument("doc_1", "Kiến trúc máy tính", "Chương 1", "12 slides", Color(0xFFE0F2FE), "📁"),
-    LibraryDocument("doc_2", "Hệ điều hành cơ bản", "Chương 2", "24 slides", Color(0xFFF3E8FF), "🧠"),
-    LibraryDocument("doc_3", "Lập trình Python nâng cao", "Tài liệu đọc", "PDF • 45 trang", Color(0xFFDCFCE7), "🐍"),
-    LibraryDocument("doc_4", "Cơ sở dữ liệu", "Chương 1", "18 slides", Color(0xFFFEF3C7), "🗄️"),
-    LibraryDocument("doc_5", "Hướng dẫn khóa luận", "Tài liệu đọc", "Word • 10 trang", Color(0xFFE0F2FE), "📝"),
-    LibraryDocument("doc_6", "Mạng máy tính", "Chương 3", "32 slides", Color(0xFFF3E8FF), "🌐")
-)
-
 /**
- * Màn hình Thư viện tài liệu (LibraryScreen) hiển thị danh sách tài liệu học tập.
- * Lắp ghép từ các component con độc lập theo nguyên tắc Component Modularization.
+ * Màn hình Thư viện tài liệu (LibraryScreen) hiển thị danh sách tài liệu học tập từ Backend EduRAG.
+ * Tuân thủ tuyệt đối Stateless UI: nhận [libraryState] từ bên ngoài và hiển thị theo trạng thái thực tế.
  */
 @Composable
 fun LibraryScreen(
+    libraryState: UiLoadState<List<DocumentUiModel>>,
+    onReloadLibrary: () -> Unit,
     onDocumentClick: (String) -> Unit,
     onTabSelected: (String) -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     var selectedFilter by rememberSaveable { mutableStateOf("Tất cả") }
 
-    // Xử lý logic lọc danh sách tài liệu động theo chip đang chọn
-    val filteredDocuments = remember(selectedFilter) {
-        when (selectedFilter) {
-            "Tất cả" -> mockDocuments
-            "Slide bài giảng" -> mockDocuments.filter { it.info.contains("slides", ignoreCase = true) }
-            "Tài liệu đọc" -> mockDocuments.filter { it.category == "Tài liệu đọc" || it.info.contains("trang", ignoreCase = true) }
-            else -> mockDocuments.filter { it.category == selectedFilter }
+    LaunchedEffect(libraryState) {
+        if (libraryState is UiLoadState.Idle) {
+            onReloadLibrary()
         }
     }
 
     Scaffold(
         topBar = {
-            // Sử dụng Base Header dùng chung (Phương án 2)
             EduRAGTopAppBar(
                 navigationContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -93,7 +73,6 @@ fun LibraryScreen(
                     }
                 },
                 actionContent = {
-                    // Profile Avatar sinh viên
                     Surface(
                         shape = CircleShape,
                         color = BrandSurfaceContainerLow,
@@ -113,9 +92,8 @@ fun LibraryScreen(
             )
         },
         bottomBar = {
-            // Sử dụng lại thanh BottomNavBar dùng chung của hệ thống
             EduRAGBottomNavBar(
-                currentTab = "documents", // Tab tài liệu đang được active
+                currentTab = "documents",
                 onTabSelected = onTabSelected
             )
         },
@@ -127,33 +105,100 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // 1. Thanh lọc ChipFilter (Component con 2)
             LibraryFilterChips(
                 selectedFilter = selectedFilter,
                 onFilterSelected = { selectedFilter = it }
             )
 
-            // 2. Lưới hiển thị danh sách tài liệu động (Component con 3)
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
             ) {
-                items(filteredDocuments, key = { it.id }) { document ->
-                    DocumentCard(
-                        title = document.title,
-                        categoryLabel = document.category,
-                        infoText = document.info,
-                        bannerColor = document.bannerColor,
-                        iconEmoji = document.iconEmoji,
-                        onViewClick = {
-                            onDocumentClick(document.id)
+                when (libraryState) {
+                    is UiLoadState.Loading, is UiLoadState.Idle -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = BrandPrimary
+                        )
+                    }
+                    is UiLoadState.Error -> {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Lỗi tải tài liệu: ${libraryState.message}",
+                                color = BrandErrorDestructive,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            EduRAGButton(text = "Thử lại", onClick = onReloadLibrary)
                         }
-                    )
+                    }
+                    is UiLoadState.Empty -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "📭", fontSize = 48.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Chưa có tài liệu học tập nào trong hệ thống.",
+                                color = BrandTextSecondary,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    is UiLoadState.Success -> {
+                        val allDocs = libraryState.data
+                        val filteredDocuments = remember(allDocs, selectedFilter) {
+                            when (selectedFilter) {
+                                "Tất cả" -> allDocs
+                                "Slide bài giảng" -> allDocs.filter { it.fileFormat == DocumentFileFormat.SLIDE }
+                                "Tài liệu đọc" -> allDocs.filter { it.fileFormat == DocumentFileFormat.PDF || it.fileFormat == DocumentFileFormat.WORD }
+                                else -> allDocs
+                            }
+                        }
+
+                        if (filteredDocuments.isEmpty()) {
+                            Text(
+                                text = "Không có tài liệu nào thuộc bộ lọc này.",
+                                color = BrandTextSecondary,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(filteredDocuments, key = { it.id }) { document ->
+                                    val (color, emoji) = when (document.fileFormat) {
+                                        DocumentFileFormat.PDF -> Color(0xFFDCFCE7) to "🐍"
+                                        DocumentFileFormat.SLIDE -> Color(0xFFE0F2FE) to "📁"
+                                        DocumentFileFormat.WORD -> Color(0xFFF3E8FF) to "📝"
+                                        else -> Color(0xFFFEF3C7) to "🗄️"
+                                    }
+
+                                    DocumentCard(
+                                        title = document.title,
+                                        categoryLabel = document.category,
+                                        infoText = "${document.pageOrSlideCount} trang/slide",
+                                        bannerColor = color,
+                                        iconEmoji = emoji,
+                                        onViewClick = {
+                                            onDocumentClick(document.id)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

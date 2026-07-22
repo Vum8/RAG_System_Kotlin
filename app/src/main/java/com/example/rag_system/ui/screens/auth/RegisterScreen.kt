@@ -7,7 +7,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,19 +19,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.components.*
+import com.example.rag_system.ui.models.UserUiModel
+import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
 
-/**
- * Màn hình Quên mật khẩu chính (ForgotPasswordScreen) lắp ghép các component con độc lập.
- * Stateless UI hoàn toàn, nhận callback sự kiện truyền ra ngoài.
- */
 @Composable
-fun ForgotPasswordScreen(
-    forgotPasswordState: com.example.rag_system.ui.state.UiLoadState<Unit>,
-    onSendLinkSubmitted: (String) -> Unit,
+fun RegisterScreen(
+    registerState: UiLoadState<UserUiModel>,
+    onRegisterSubmitted: (String, String, String, String, String, String) -> Unit,
     onBackToLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+
     Scaffold(
         containerColor = BrandAppBackground,
         modifier = modifier.fillMaxSize()
@@ -36,18 +39,18 @@ fun ForgotPasswordScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .verticalScroll(scrollState),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Branding Header trung tâm (Đồng bộ màn đăng nhập)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(bottom = 4.dp)
@@ -70,30 +73,28 @@ fun ForgotPasswordScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Đặt lại mật khẩu tài khoản học tập",
+                        text = "Đăng ký tài khoản học tập",
                         fontSize = 12.sp,
                         color = BrandTextSecondary
                     )
                 }
 
-                // 2. Thẻ Form quên mật khẩu nhập email
-                ForgotPasswordForm(onSendLinkSubmitted = onSendLinkSubmitted)
+                RegisterForm(onRegisterSubmitted = onRegisterSubmitted)
 
-                if (forgotPasswordState is com.example.rag_system.ui.state.UiLoadState.Loading) {
+                if (registerState is UiLoadState.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(32.dp),
                         color = BrandPrimary
                     )
-                } else if (forgotPasswordState is com.example.rag_system.ui.state.UiLoadState.Error) {
+                } else if (registerState is UiLoadState.Error) {
                     Text(
-                        text = forgotPasswordState.message,
+                        text = registerState.message,
                         color = BrandErrorDestructive,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
 
-                // 3. Chân trang quay lại màn hình đăng nhập dùng chung
                 AuthFooterActionRow(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     text = "Quay lại Đăng nhập",

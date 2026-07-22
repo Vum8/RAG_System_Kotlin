@@ -4,29 +4,33 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.rag_system.data.session.SessionEvent
 import com.example.rag_system.data.session.SessionEventBus
+import com.example.rag_system.data.api.core.ApiResult
 import com.example.rag_system.ui.screens.auth.ForgotPasswordScreen
 import com.example.rag_system.ui.screens.auth.LoginScreen
-import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import com.example.rag_system.ui.screens.user.DocumentReaderScreen
 import com.example.rag_system.ui.screens.user.MainTabScreen
 import com.example.rag_system.ui.screens.user.ProfileScreen
+import com.example.rag_system.ui.state.UiLoadState
+import com.example.rag_system.ui.viewmodels.AuthViewModel
 import com.example.rag_system.ui.viewmodels.ChatViewModel
+import com.example.rag_system.ui.viewmodels.DocumentViewModel
 
 /**
  * Hệ thống điều phối định tuyến NavHost của dự án EduRAG.
- * Quản lý 2 tầng điều hướng:
- *   - Tầng 1 (NavHost): chuyển giữa các màn hình lớn (Login → Chat → Profile...)
- *   - Tầng 2 (MainTabScreen/Crossfade): chuyển giữa các Tab trong màn hình chính
+ * Tích hợp đầy đủ logic xác thực động từ [AuthViewModel] cho các màn hình Login và Profile.
  */
 @Composable
 fun AppNavigation(
@@ -34,15 +38,17 @@ fun AppNavigation(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val authViewModel = remember { AuthViewModel() }
+    val documentViewModel = remember { DocumentViewModel() }
 
-    // ── Lắng nghe SessionEventBus để tự động đăng xuất khi token hết hạn (401) ──
     LaunchedEffect(Unit) {
         SessionEventBus.sessionEvents.collect { event ->
             when (event) {
                 is SessionEvent.Unauthorized, is SessionEvent.SessionExpired -> {
                     Toast.makeText(context, "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.", Toast.LENGTH_LONG).show()
+                    authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true } // Xóa toàn bộ back stack, về Login
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             }
@@ -55,12 +61,22 @@ fun AppNavigation(
         modifier = modifier
     ) {
         composable(Screen.Login.route) {
-            LoginScreen(
-                onLoginSubmitted = { email, _, _ ->
-                    Toast.makeText(context, "Đăng nhập thành công: $email", Toast.LENGTH_SHORT).show()
+            val loginState by authViewModel.loginState.collectAsState()
+
+            LaunchedEffect(loginState) {
+                if (loginState is UiLoadState.Success) {
+                    Toast.makeText(context, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show()
+                    authViewModel.resetLoginState()
                     navController.navigate(Screen.Chat.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
+                }
+            }
+
+            LoginScreen(
+                loginState = loginState,
+                onLoginSubmitted = { email, pass, _ ->
+                    authViewModel.login(email, pass)
                 },
                 onForgotPasswordClick = {
                     navController.navigate(Screen.ForgotPassword.route)
@@ -71,17 +87,58 @@ fun AppNavigation(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                onRegisterNewDocumentClick = {
-                    Toast.makeText(context, "Mở form đăng ký tài liệu mới", Toast.LENGTH_SHORT).show()
+                onRegisterClick = {
+                    navController.navigate(Screen.Register.route)
+                }
+            )
+        }
+
+        composable(Screen.Register.route) {
+            val registerState by authViewModel.registerState.collectAsState()
+
+            LaunchedEffect(registerState) {
+                if (registerState is UiLoadState.Success) {
+                    Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
+                    authViewModel.resetRegisterState()
+                    navController.popBackStack()
+                }
+            }
+
+            // RegisterScreen chưa được tạo, nhưng ta sẽ map routing trước
+            com.example.rag_system.ui.screens.auth.RegisterScreen(
+                registerState = registerState,
+                onRegisterSubmitted = { email, pass, name, phone, studentCode, dob ->
+                    authViewModel.register(
+                        com.example.rag_system.data.api.model.RegisterRequestDto(
+                            email = email,
+                            password = pass,
+                            fullName = name,
+                            phone = phone,
+                            studentCode = studentCode,
+                            dateOfBirth = dob
+                        )
+                    )
+                },
+                onBackToLoginClick = {
+                    navController.popBackStack()
                 }
             )
         }
 
         composable(Screen.ForgotPassword.route) {
-            ForgotPasswordScreen(
-                onSendLinkSubmitted = { email ->
-                    Toast.makeText(context, "Đã gửi link đặt lại mật khẩu vào: $email", Toast.LENGTH_LONG).show()
+            val forgotPasswordState by authViewModel.forgotPasswordState.collectAsState()
+
+            LaunchedEffect(forgotPasswordState) {
+                if (forgotPasswordState is UiLoadState.Success) {
+                    Toast.makeText(context, "Đã gửi link đặt lại mật khẩu!", Toast.LENGTH_LONG).show()
                     navController.popBackStack()
+                }
+            }
+
+            ForgotPasswordScreen(
+                forgotPasswordState = forgotPasswordState,
+                onSendLinkSubmitted = { email ->
+                    authViewModel.forgotPassword(email)
                 },
                 onBackToLoginClick = {
                     navController.popBackStack()
@@ -90,14 +147,12 @@ fun AppNavigation(
         }
 
         composable(Screen.Chat.route) {
-            // ChatViewModel được tạo tại đây và share cho toàn bộ hệ thống Tab bên dưới
             val chatViewModel = remember { ChatViewModel() }
 
-            // MainTabScreen quản lý nội bộ: tab Chat / Lịch sử / Thư viện (không cần route NavHost riêng)
             MainTabScreen(
                 chatViewModel = chatViewModel,
                 onBackClick = {
-                    Toast.makeText(context, "Quay lại màn hình trước", Toast.LENGTH_SHORT).show()
+                    // Không cần hiện Toast khi back
                 },
                 onProfileClick = {
                     navController.navigate(Screen.Profile.route)
@@ -110,13 +165,36 @@ fun AppNavigation(
         }
 
         composable(Screen.Profile.route) {
+            val profileState by authViewModel.profileState.collectAsState()
+
             ProfileScreen(
+                profileState = profileState,
+                onReloadProfile = {
+                    authViewModel.loadProfile()
+                },
                 onCloseClick = {
                     navController.popBackStack()
                 },
                 onLogoutClick = {
+                    authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true } // Xóa toàn bộ stack và chuyển về màn hình đăng nhập
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onUpdateProfile = { name, phone, onComplete ->
+                    authViewModel.updateProfile(name, phone) { result ->
+                        when (result) {
+                            is ApiResult.Success -> onComplete(true, "Cập nhật thông tin thành công!")
+                            is ApiResult.Error -> onComplete(false, result.error.message)
+                        }
+                    }
+                },
+                onChangePassword = { current, new, onComplete ->
+                    authViewModel.changePassword(current, new) { result ->
+                        when (result) {
+                            is ApiResult.Success -> onComplete(true, "Đổi mật khẩu thành công!")
+                            is ApiResult.Error -> onComplete(false, result.error.message)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxSize()
@@ -130,6 +208,8 @@ fun AppNavigation(
             val documentId = backStackEntry.arguments?.getString("documentId") ?: ""
             DocumentReaderScreen(
                 documentId = documentId,
+                documentTitle = documentViewModel.getDocumentTitleById(documentId),
+                pageContentProvider = { page -> documentViewModel.getPageContent(page) },
                 onBackClick = {
                     navController.popBackStack()
                 },
@@ -138,5 +218,3 @@ fun AppNavigation(
         }
     }
 }
-
-

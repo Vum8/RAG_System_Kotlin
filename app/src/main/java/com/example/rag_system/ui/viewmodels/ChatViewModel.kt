@@ -3,11 +3,10 @@ package com.example.rag_system.ui.viewmodels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateListOf
-import android.net.Uri
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rag_system.data.repository.MockChatRepository
+import com.example.rag_system.data.repository.ChatRepository
 import com.example.rag_system.ui.models.ChatSessionUiModel
 import com.example.rag_system.ui.models.MessageUiModel
 import com.example.rag_system.ui.state.UiLoadState
@@ -18,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Quản lý vòng đời Coroutine an toàn qua `viewModelScope` và ủy quyền xử lý nghiệp vụ cho [ChatRouteDelegate].
  */
 class ChatViewModel(
-    private val chatRepository: MockChatRepository = MockChatRepository()
+    private val chatRepository: ChatRepository = ChatRepository()
 ) : ViewModel() {
 
     private val delegate = ChatRouteDelegate(
@@ -28,6 +27,7 @@ class ChatViewModel(
 
     val chatHistoryState: StateFlow<UiLoadState<List<ChatSessionUiModel>>> = delegate.chatHistoryState
     val currentChatState: StateFlow<UiLoadState<MessageUiModel>> = delegate.currentChatState
+    val sessionMessagesState: StateFlow<UiLoadState<List<MessageUiModel>>> = delegate.sessionMessagesState
 
     // Lưu nháp nội dung đang gõ dở trong ô chat — được hoist lên ViewModel
     // để không bị reset khi sinh viên chuyển tab và quay lại
@@ -38,28 +38,6 @@ class ChatViewModel(
         draftInputText = text
     }
 
-    // Lưu nháp danh sách tệp đính kèm — hoist lên ViewModel để không mất khi đổi tab
-    val draftAttachedFileNames = mutableStateListOf<String>()
-    val draftAttachedFileUris = mutableStateListOf<Uri>()
-
-    fun addAttachment(fileName: String, uri: Uri) {
-        if (!draftAttachedFileUris.contains(uri)) {
-            draftAttachedFileNames.add(fileName)
-            draftAttachedFileUris.add(uri)
-        }
-    }
-
-    fun removeAttachment(index: Int) {
-        if (index in draftAttachedFileNames.indices) {
-            draftAttachedFileNames.removeAt(index)
-            draftAttachedFileUris.removeAt(index)
-        }
-    }
-
-    fun clearAttachments() {
-        draftAttachedFileNames.clear()
-        draftAttachedFileUris.clear()
-    }
 
     init {
         loadChatHistory()
@@ -67,6 +45,14 @@ class ChatViewModel(
 
     fun loadChatHistory() {
         delegate.loadChatHistory()
+    }
+
+    fun loadSessionMessages(sessionId: Long) {
+        delegate.loadSessionMessages(sessionId)
+    }
+
+    fun startNewSession() {
+        delegate.startNewSession()
     }
 
     fun sendChatQuery(query: String) {

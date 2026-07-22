@@ -38,32 +38,6 @@ import com.example.rag_system.ui.models.SourceCitationUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
 
-/**
- * Trích xuất tên hiển thị thực tế của tệp tin từ Uri hệ thống
- */
-private fun getFileNameFromUri(context: Context, uri: Uri): String? {
-    var name: String? = null
-    if (uri.scheme == "content") {
-        val cursor = context.contentResolver.query(uri, null, null, null, null)
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (index != -1) {
-                    name = it.getString(index)
-                }
-            }
-        }
-    }
-    if (name == null) {
-        name = uri.path
-        val cut = name?.lastIndexOf('/')
-        if (cut != null && cut != -1) {
-            name = name!!.substring(cut + 1)
-        }
-    }
-    return name
-}
-
 
 /**
  * Màn hình Chat chính của EduRAG (lắp ghép động 100%, không chứa component tĩnh hardcoded).
@@ -74,13 +48,9 @@ private fun getFileNameFromUri(context: Context, uri: Uri): String? {
 fun ChatScreen(
     currentChatState: UiLoadState<MessageUiModel>,
     chatHistoryState: UiLoadState<List<ChatSessionUiModel>>,
+    sessionMessagesState: UiLoadState<List<MessageUiModel>> = UiLoadState.Idle,
     inputText: String,
     onInputTextChanged: (String) -> Unit,
-    attachedFileNames: List<String>,
-    attachedFileUris: List<Uri>,
-    onAddAttachment: (String, Uri) -> Unit,
-    onRemoveAttachment: (Int) -> Unit,
-    onClearAttachments: () -> Unit,
     onSendMessage: (String) -> Unit,
     onBackClick: () -> Unit,
     onSourceClick: (SourceCitationUiModel) -> Unit,
@@ -94,6 +64,16 @@ fun ChatScreen(
     // Danh sách toàn bộ tin nhắn (User và AI) trong phiên chat hiện tại
     val activeMessages = remember { mutableStateListOf<MessageUiModel>() }
 
+    // Tự động tải tin nhắn từ session cũ khi chuyển từ HistoryScreen sang
+    LaunchedEffect(sessionMessagesState) {
+        if (sessionMessagesState is UiLoadState.Success) {
+            activeMessages.clear()
+            activeMessages.addAll(sessionMessagesState.data)
+        } else if (sessionMessagesState is UiLoadState.Empty) {
+            activeMessages.clear()
+        }
+    }
+
     // Tự động nhận diện và cập nhật tin nhắn AI mới vào danh sách khi có Success state
     LaunchedEffect(currentChatState) {
         if (currentChatState is UiLoadState.Success) {
@@ -104,17 +84,7 @@ fun ChatScreen(
         }
     }
 
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetMultipleContents()
-    ) { uris: List<Uri> ->
-        if (uris.isNotEmpty()) {
-            uris.forEach { uri ->
-                val fileName = getFileNameFromUri(context, uri) ?: "Tài_liệu_Đính_Kèm.pdf"
-                onAddAttachment(fileName, uri)
-            }
-            Toast.makeText(context, "Đã thêm ${uris.size} tệp đính kèm", Toast.LENGTH_SHORT).show()
-        }
-    }
+
 
     // Trạng thái Bottom Sheet xem tài liệu — citation active khi người dùng bấm vào nguồn
     var activeDocumentCitation by rememberSaveable { mutableStateOf<SourceCitationUiModel?>(null) }
@@ -199,36 +169,22 @@ fun ChatScreen(
                 Column {
                     ChatInputBar(
                         inputText = inputText,
-                        attachedFileNames = attachedFileNames,
-                        attachedFileUris = attachedFileUris,
                         onInputTextChanged = onInputTextChanged,
-                        onRemoveAttachedFile = { index -> onRemoveAttachment(index) },
                         onSendClick = {
                             val query = inputText.trim()
-                            if (query.isNotEmpty() || attachedFileNames.isNotEmpty()) {
-                                val fileCount = attachedFileNames.size
-                                val effectiveQuery = if (query.isNotEmpty()) query
-                                    else if (fileCount == 1) "Tôi vừa đính kèm 1 tệp: ${attachedFileNames[0]}. Hãy phân tích giúp tôi."
-                                    else "Tôi vừa đính kèm $fileCount tệp. Hãy phân tích giúp tôi."
-
+                            if (query.isNotEmpty()) {
                                 val userMsg = MessageUiModel(
                                     id = "user_${System.currentTimeMillis()}",
-                                    content = effectiveQuery,
+                                    content = query,
                                     isFromUser = true,
-                                    sendTime = "Vừa xong",
-                                    attachedFileNames = attachedFileNames.toList(),
-                                    attachedFileUris = attachedFileUris.toList()
+                                    sendTime = "Vừa xong"
                                 )
                                 activeMessages.add(userMsg)
-                                onSendMessage(effectiveQuery)
+                                onSendMessage(query)
 
                                 // Reset thanh nhập liệu
                                 onInputTextChanged("")
-                                onClearAttachments()
                             }
-                        },
-                        onAttachClick = {
-                            filePickerLauncher.launch("*/*")
                         }
                     )
 
@@ -260,20 +216,17 @@ fun ChatScreen(
                     EduAiWelcomeMessage()
                 }
 
-                // 2. Duyệt danh sách hội thoại cũ một cách động hoàn toàn từ chatHistoryState
-                if (chatHistoryState is UiLoadState.Success) {
-                    chatHistoryState.data.forEach { session ->
-                        // Bong bóng tin nhắn động từ người dùng hỏi về chủ đề phiên
+                // 2. Nếu chưa có tin nhắn nào trong phiên hiện tại, hiển thị tóm tắt phiên gần nhất từ lịch sử
+                if (activeMessages.isEmpty() && chatHistoryState is UiLoadState.Success) {
+                    chatHistoryState.data.take(2).forEach { session ->
                         item {
                             EduUserMessageBubble(content = "Cho tôi hỏi về môn ${session.subjectLabel ?: "học"}: ${session.title}")
                         }
-                        // Bong bóng tin nhắn AI phản hồi động hoàn toàn (tự động vẽ pins và citation cards nếu có)
                         item {
                             EduAiDetailedResponse(
                                 content = session.lastMessagePreview,
                                 citations = session.citations,
                                 onSourceClick = { citation ->
-                                    // Gán tài liệu active để mở ngay tại màn hình này
                                     activeDocumentCitation = citation
                                     onSourceClick(citation)
                                 }
@@ -286,9 +239,7 @@ fun ChatScreen(
                 items(activeMessages) { message ->
                     if (message.isFromUser) {
                         EduUserMessageBubble(
-                            content = message.content,
-                            attachedFileNames = message.attachedFileNames,
-                            attachedFileUris = message.attachedFileUris
+                            content = message.content
                         )
                     } else {
                         EduAiDetailedResponse(
@@ -351,11 +302,6 @@ fun EduRAGPreview() {
             chatHistoryState = UiLoadState.Idle,
             inputText = "",
             onInputTextChanged = {},
-            attachedFileNames = emptyList(),
-            attachedFileUris = emptyList(),
-            onAddAttachment = { _, _ -> },
-            onRemoveAttachment = {},
-            onClearAttachments = {},
             onSendMessage = {},
             onBackClick = {},
             onSourceClick = {},

@@ -6,6 +6,7 @@ package com.example.rag_system.navigation
 sealed class Screen(val route: String) {
     data object Login : Screen("login_screen")
     data object ForgotPassword : Screen("forgot_password_screen")
+    data object Register : Screen("register_screen")
     data object Chat : Screen("chat_screen")     // MainTabScreen — quản lý cả 3 tab Chat/Lịch sử/Thư viện
     data object DocumentReader : Screen("document_reader_screen/{documentId}")
     data object Profile : Screen("profile_screen")

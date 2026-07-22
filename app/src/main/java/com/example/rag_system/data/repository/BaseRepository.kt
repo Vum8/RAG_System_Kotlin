@@ -2,10 +2,13 @@ package com.example.rag_system.data.repository
 
 import com.example.rag_system.data.api.core.ApiError
 import com.example.rag_system.data.api.core.ApiResult
+import com.example.rag_system.data.api.model.BaseApiResponseDto
 import com.example.rag_system.data.session.SessionEvent
 import com.example.rag_system.data.session.SessionEventBus
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -13,15 +16,17 @@ import java.net.UnknownHostException
 /**
  * Lớp cơ sở (BaseRepository) cho tất cả các Repository trong hệ thống theo kiến trúc MVVM.
  * Cung cấp hàm `safeApiCall` để bọc các lời gọi API, xử lý ngoại lệ mạng,
- * và tự động thông báo cho `SessionEventBus` khi gặp lỗi 401 Unauthorized.
+ * bóc tách thông báo lỗi JSON từ Backend và tự động phát sự kiện 401 Unauthorized.
  */
 abstract class BaseRepository {
+    private val gson = Gson()
 
     /**
      * Bọc lời gọi API bất đồng bộ và trả về [ApiResult].
      * Tự động bắt lỗi và chuyển đổi sang [ApiError].
      */
     protected suspend fun <T> safeApiCall(
+        emitUnauthorizedEvent: Boolean = true,
         apiCall: suspend () -> T
     ): ApiResult<T> = withContext(Dispatchers.IO) {
         try {
@@ -31,7 +36,8 @@ abstract class BaseRepository {
             val apiError = parseThrowable(throwable)
             
             // Xử lý tự động khi gặp lỗi 401 Unauthorized theo quy tắc Global Rule
-            if (apiError.isUnauthorized) {
+            // Chỉ phát sự kiện Unauthorized nếu cờ emitUnauthorizedEvent được bật (tránh xóa form khi đăng nhập sai)
+            if (apiError.isUnauthorized && emitUnauthorizedEvent) {
                 SessionEventBus.tryEmitEvent(SessionEvent.Unauthorized)
             }
             
@@ -40,15 +46,32 @@ abstract class BaseRepository {
     }
 
     private fun parseThrowable(throwable: Throwable): ApiError {
-        // Có thể mở rộng để parse HttpException từ Retrofit khi thêm dependency:
-        // if (throwable is retrofit2.HttpException) {
-        //     val code = throwable.code()
-        //     return ApiError(code = code, message = throwable.message(), throwable = throwable)
-        // }
-        
-        // Nhận diện mã lỗi từ reflection (cho phép hoạt động với HttpException của Retrofit/Ktor nếu có)
+        if (throwable is HttpException) {
+            val code = throwable.code()
+            var errorMsg = throwable.message() ?: "Lỗi máy chủ ($code)"
+            
+            try {
+                val errorBodyString = throwable.response()?.errorBody()?.string()
+                if (!errorBodyString.isNullOrEmpty()) {
+                    val errorDto = gson.fromJson(errorBodyString, BaseApiResponseDto::class.java)
+                    if (!errorDto.message.isNullOrEmpty()) {
+                        errorMsg = errorDto.message
+                    }
+                }
+            } catch (_: Exception) {
+                // Sử dụng errorMsg mặc định nếu parse JSON thất bại
+            }
+
+            return ApiError(
+                code = code,
+                message = errorMsg,
+                throwable = throwable
+            )
+        }
+
+        // Nhận diện mã lỗi từ reflection cho các trường hợp ngoại lệ HTTP khác
         val className = throwable::class.java.simpleName
-        if (className == "HttpException" || className.contains("ResponseException")) {
+        if (className.contains("ResponseException")) {
             try {
                 val codeMethod = throwable::class.java.getMethod("code")
                 val code = codeMethod.invoke(throwable) as? Int

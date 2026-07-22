@@ -78,7 +78,7 @@ fun ProfileHeaderCard(
                         .border(1.dp, BrandBorderSubtle, CircleShape)
                         .align(Alignment.BottomEnd)
                         .clickable {
-                            Toast.makeText(context, "Thay đổi ảnh đại diện", Toast.LENGTH_SHORT).show()
+                            // Xử lý mở bộ sưu tập/chụp ảnh
                         },
                     contentAlignment = Alignment.Center
                 ) {

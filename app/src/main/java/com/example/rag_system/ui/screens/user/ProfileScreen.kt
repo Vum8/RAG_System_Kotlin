@@ -7,47 +7,49 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.components.*
+import com.example.rag_system.ui.models.UserUiModel
+import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
 
 /**
- * Màn hình Hồ sơ cá nhân chính (ProfileScreen).
- * Tuân thủ Stateless: Nhận callback onCloseClick từ bên ngoài điều hướng (AppNavigation).
- * Sử dụng Scaffold bao bọc, tích hợp TopAppBar có nút Đóng trái và tiêu đề ở giữa.
+ * Màn hình Hồ sơ cá nhân (ProfileScreen).
+ * Tuân thủ tuyệt đối Stateless UI: Nhận [profileState] và các callback từ bên ngoài (AppNavigation).
  */
 @Composable
 fun ProfileScreen(
+    profileState: UiLoadState<UserUiModel>,
+    onReloadProfile: () -> Unit,
     onCloseClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onUpdateProfile: (String, String?, (Boolean, String) -> Unit) -> Unit = { _, _, _ -> },
+    onChangePassword: (String, String, (Boolean, String) -> Unit) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // ── Quản lý State cho Form thông tin cá nhân ──
-    var name by rememberSaveable { mutableStateOf("Nguyễn Văn A") }
-    val email = "vanna.nguyen@student.edu.vn"
-    val studentId = "B20DCCN123"
-    var phone by rememberSaveable { mutableStateOf("0912 345 678") }
+    LaunchedEffect(profileState) {
+        if (profileState is UiLoadState.Idle) {
+            onReloadProfile()
+        }
+    }
 
-    // ── Quản lý State cho Form mật khẩu ──
+    var selectedTab by rememberSaveable { mutableStateOf("personal") }
     var currentPass by rememberSaveable { mutableStateOf("") }
     var newPass by rememberSaveable { mutableStateOf("") }
     var confirmPass by rememberSaveable { mutableStateOf("") }
-
-    // ── Quản lý Tab hiện tại ("personal" hoặc "password") ──
-    var selectedTab by rememberSaveable { mutableStateOf("personal") }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -87,8 +89,6 @@ fun ProfileScreen(
                     }
                 },
                 actionContent = {
-                    // [PHƯƠNG ÁN B] Nút Đăng xuất ở góc trên bên phải thanh TopAppBar
-                    // Để xóa phương án này: Xóa toàn bộ block actionContent này.
                     Text(
                         text = "Đăng xuất",
                         fontSize = 14.sp,
@@ -102,82 +102,118 @@ fun ProfileScreen(
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Thẻ Profile Header Card
-            ProfileHeaderCard(
-                userName = name,
-                userEmail = email
-            )
-
-            // Thanh chuyển đổi Tab dạng capsule
-            ProfileTabControl(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
-            )
-
-            // Hiển thị Form tương ứng với Tab được chọn
-            if (selectedTab == "personal") {
-                ProfilePersonalForm(
-                    name = name,
-                    onNameChange = { name = it },
-                    email = email,
-                    studentId = studentId,
-                    phone = phone,
-                    onPhoneChange = { phone = it }
-                )
-            } else {
-                ProfilePasswordForm(
-                    currentPass = currentPass,
-                    onCurrentPassChange = { currentPass = it },
-                    newPass = newPass,
-                    onNewPassChange = { newPass = it },
-                    confirmPass = confirmPass,
-                    onConfirmPassChange = { confirmPass = it }
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Nút Lưu thay đổi
-            EduRAGButton(
-                text = "Lưu thay đổi",
-                onClick = {
-                    if (selectedTab == "personal") {
-                        if (name.isBlank() || phone.isBlank()) {
-                            Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Cập nhật thông tin thành công!", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        if (currentPass.isEmpty() || newPass.isEmpty() || confirmPass.isEmpty()) {
-                            Toast.makeText(context, "Vui lòng điền đủ các trường mật khẩu", Toast.LENGTH_SHORT).show()
-                        } else if (newPass != confirmPass) {
-                            Toast.makeText(context, "Mật khẩu xác nhận không khớp", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Thay đổi mật khẩu thành công!", Toast.LENGTH_SHORT).show()
-                            currentPass = ""
-                            newPass = ""
-                            confirmPass = ""
-                        }
+            when (profileState) {
+                is UiLoadState.Loading, is UiLoadState.Idle -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = BrandPrimary
+                    )
+                }
+                is UiLoadState.Error -> {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Lỗi tải thông tin: ${profileState.message}",
+                            color = BrandErrorDestructive,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        EduRAGButton(text = "Thử lại", onClick = onReloadProfile)
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-            )
+                }
+                is UiLoadState.Success -> {
+                    val user = profileState.data
+                    var editableName by rememberSaveable(user) { mutableStateOf(user.name) }
+                    var editablePhone by rememberSaveable(user) { mutableStateOf(user.phoneNumber ?: "") }
 
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        ProfileHeaderCard(
+                            userName = user.name,
+                            userEmail = user.email
+                        )
+
+                        ProfileTabControl(
+                            selectedTab = selectedTab,
+                            onTabSelected = { selectedTab = it }
+                        )
+
+                        if (selectedTab == "personal") {
+                            ProfilePersonalForm(
+                                name = editableName,
+                                onNameChange = { editableName = it },
+                                email = user.email,
+                                studentId = user.studentId,
+                                phone = editablePhone,
+                                onPhoneChange = { editablePhone = it }
+                            )
+                        } else {
+                            ProfilePasswordForm(
+                                currentPass = currentPass,
+                                onCurrentPassChange = { currentPass = it },
+                                newPass = newPass,
+                                onNewPassChange = { newPass = it },
+                                confirmPass = confirmPass,
+                                onConfirmPassChange = { confirmPass = it }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        EduRAGButton(
+                            text = "Lưu thay đổi",
+                            onClick = {
+                                if (selectedTab == "personal") {
+                                    if (editableName.isBlank()) {
+                                        Toast.makeText(context, "Họ tên không được để trống", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        onUpdateProfile(editableName, editablePhone.ifBlank { null }) { success, msg ->
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } else {
+                                    if (currentPass.isEmpty() || newPass.isEmpty() || confirmPass.isEmpty()) {
+                                        Toast.makeText(context, "Vui lòng điền đủ các trường mật khẩu", Toast.LENGTH_SHORT).show()
+                                    } else if (newPass != confirmPass) {
+                                        Toast.makeText(context, "Mật khẩu xác nhận không khớp", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        onChangePassword(currentPass, newPass) { success, msg ->
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                            if (success) {
+                                                currentPass = ""
+                                                newPass = ""
+                                                confirmPass = ""
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp)
+                        )
+                    }
+                }
+                else -> {}
+            }
         }
     }
 
-    // Dialog xác nhận đăng xuất dùng chung cho cả 2 phương án
     if (showLogoutDialog) {
         LogoutConfirmDialog(
             onDismiss = { showLogoutDialog = false },
@@ -189,9 +225,6 @@ fun ProfileScreen(
     }
 }
 
-/**
- * Clickable helper không hiển thị hiệu ứng gợn sóng (để giống nút text phẳng Close).
- */
 @Composable
 private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier {
     return this.clickable(
