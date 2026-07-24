@@ -33,7 +33,6 @@ fun LoginScreen(
     loginState: UiLoadState<UserUiModel>,
     onLoginSubmitted: (String, String, Boolean) -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onGoogleLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -104,41 +103,6 @@ fun LoginScreen(
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(
-                        modifier = Modifier.weight(1f),
-                        color = BrandBorderSubtle
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "HOẶC",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = BrandOutlineVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    HorizontalDivider(
-                        modifier = Modifier.weight(1f),
-                        color = BrandBorderSubtle
-                    )
-                }
-
-                EduRAGButton(
-                    text = "Đăng nhập với Google",
-                    onClick = onGoogleLoginClick,
-                    variant = EduButtonVariant.GOOGLE,
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingContent = {
-                        Text(
-                            text = "G",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = BrandPrimaryContainer
-                        )
-                    }
-                )
 
                 AuthFooterActionRow(
                     icon = Icons.Default.AddCircle,

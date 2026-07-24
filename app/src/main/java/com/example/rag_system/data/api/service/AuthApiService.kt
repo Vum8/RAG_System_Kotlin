@@ -16,4 +16,10 @@ interface AuthApiService {
 
     @POST("api/auth/register")
     suspend fun register(@Body request: RegisterRequestDto): BaseApiResponseDto<AuthResponseDto>
+
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: com.example.rag_system.data.api.model.ForgotPasswordRequestDto): BaseApiResponseDto<Any>
+
+    @POST("api/auth/reset-password")
+    suspend fun resetPassword(@Body request: com.example.rag_system.data.api.model.ResetPasswordRequestDto): BaseApiResponseDto<Any>
 }

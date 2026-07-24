@@ -2,15 +2,10 @@ package com.example.rag_system.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,19 +14,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.components.*
-import com.example.rag_system.ui.models.UserUiModel
-import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
 
+/**
+ * Màn hình Đặt lại mật khẩu (nhập token và mật khẩu mới)
+ */
 @Composable
-fun RegisterScreen(
-    registerState: UiLoadState<UserUiModel>,
-    onRegisterSubmitted: (String, String, String, String, String, String) -> Unit,
+fun ResetPasswordScreen(
+    resetPasswordState: com.example.rag_system.ui.state.UiLoadState<Unit>,
+    onResetPasswordSubmitted: (String, String) -> Unit,
     onBackToLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
-
     Scaffold(
         containerColor = BrandAppBackground,
         modifier = modifier.fillMaxSize()
@@ -46,53 +40,56 @@ fun RegisterScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(bottom = 2.dp)
+                // Branding Header
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(bottom = 4.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(BrandPrimary),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("🎓", fontSize = 18.sp)
+                        Text("🎓", fontSize = 32.sp)
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "EduRAG",
-                        fontSize = 20.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandPrimary
                     )
                 }
 
-                RegisterForm(onRegisterSubmitted = onRegisterSubmitted)
+                // Thẻ Form
+                ResetPasswordForm(onResetPasswordSubmitted = onResetPasswordSubmitted)
 
-                if (registerState is UiLoadState.Loading) {
+                if (resetPasswordState is com.example.rag_system.ui.state.UiLoadState.Loading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(32.dp),
                         color = BrandPrimary
                     )
-                } else if (registerState is UiLoadState.Error) {
+                } else if (resetPasswordState is com.example.rag_system.ui.state.UiLoadState.Error) {
                     Text(
-                        text = registerState.message,
+                        text = resetPasswordState.message,
                         color = BrandErrorDestructive,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
 
+                // Chân trang quay lại màn hình đăng nhập
                 AuthFooterActionRow(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     text = "Quay lại Đăng nhập",
                     onClick = onBackToLoginClick,
-                    showTopDivider = false
+                    showTopDivider = true
                 )
             }
         }

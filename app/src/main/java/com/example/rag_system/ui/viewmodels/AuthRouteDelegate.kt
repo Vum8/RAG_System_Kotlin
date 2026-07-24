@@ -29,6 +29,9 @@ class AuthRouteDelegate(
     private val _forgotPasswordState = MutableStateFlow<UiLoadState<Unit>>(UiLoadState.Idle)
     val forgotPasswordState: StateFlow<UiLoadState<Unit>> = _forgotPasswordState.asStateFlow()
 
+    private val _resetPasswordState = MutableStateFlow<UiLoadState<Unit>>(UiLoadState.Idle)
+    val resetPasswordState: StateFlow<UiLoadState<Unit>> = _resetPasswordState.asStateFlow()
+
     fun login(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {
             _loginState.value = UiLoadState.Error("Vui lòng nhập đầy đủ Email và Mật khẩu.")
@@ -82,11 +85,40 @@ class AuthRouteDelegate(
         }
         scope.launch {
             _forgotPasswordState.value = UiLoadState.Loading
-            // TODO: Call API when AuthRepository has it
-            // For now, mock success since we are connecting UI
-            kotlinx.coroutines.delay(500)
-            _forgotPasswordState.value = UiLoadState.Success(Unit)
+            when (val result = authRepository.forgotPassword(email)) {
+                is ApiResult.Success -> {
+                    _forgotPasswordState.value = UiLoadState.Success(Unit)
+                }
+                is ApiResult.Error -> {
+                    _forgotPasswordState.value = UiLoadState.Error(result.error.message, result.error.code)
+                }
+            }
         }
+    }
+
+    fun resetPassword(token: String, newPass: String) {
+        if (token.isBlank() || newPass.isBlank()) {
+            _resetPasswordState.value = UiLoadState.Error("Vui lòng nhập Token và Mật khẩu mới.")
+            return
+        }
+        scope.launch {
+            _resetPasswordState.value = UiLoadState.Loading
+            when (val result = authRepository.resetPassword(token, newPass)) {
+                is ApiResult.Success -> {
+                    _resetPasswordState.value = UiLoadState.Success(Unit)
+                }
+                is ApiResult.Error -> {
+                    _resetPasswordState.value = UiLoadState.Error(result.error.message, result.error.code)
+                }
+            }
+        }
+    }
+    fun resetForgotPasswordState() {
+        _forgotPasswordState.value = UiLoadState.Idle
+    }
+
+    fun resetResetPasswordState() {
+        _resetPasswordState.value = UiLoadState.Idle
     }
 
     fun loadProfile() {

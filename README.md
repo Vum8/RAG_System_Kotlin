@@ -87,6 +87,69 @@ Hệ thống tuân thủ nghiêm ngặt mô hình thiết kế **MVVM + Delegate
 
 ---
 
+## 💻 Các Lệnh Thường Dùng Cho Mobile & Backend (Cheat Sheet)
+
+Dưới đây là tổng hợp các lệnh CLI hữu ích giúp đẩy nhanh tốc độ phát triển và gỡ lỗi (debug) mà không cần mở GUI:
+
+### 1. Biên dịch và Build ứng dụng (Gradle)
+* Chạy từ thư mục gốc của project mobile (`RAG_System`):
+```powershell
+# Kiểm tra lỗi cú pháp Kotlin (Biên dịch nhanh, khuyên dùng trước khi commit)
+.\gradlew.bat compileDebugKotlin
+
+# Dọn dẹp các bản build cũ
+.\gradlew.bat clean
+
+# Tạo file APK Debug để cài đặt thủ công
+.\gradlew.bat assembleDebug
+
+# Cài đặt trực tiếp file APK Debug vào Emulator / Thiết bị đang kết nối
+.\gradlew.bat installDebug
+```
+
+### 2. Quản lý Thiết bị & Gỡ lỗi (ADB & Emulator)
+* Đảm bảo đường dẫn `platform-tools` và `emulator` của Android SDK đã được cấu hình trong Environment Path:
+```powershell
+# Danh sách thiết bị / máy ảo đang kết nối
+adb devices
+
+# Xem Logcat real-time lọc theo từ khóa của dự án (Windows)
+adb logcat | findstr com.example.rag_system
+
+# Xem Logcat real-time trên macOS / Linux
+adb logcat | grep com.example.rag_system
+
+# Xóa toàn bộ dữ liệu ứng dụng (để test lại luồng đăng nhập/giới thiệu từ đầu)
+adb shell pm clear com.example.rag_system
+
+# Khởi chạy máy ảo Android từ Terminal (Ví dụ tên AVD là Pixel_5)
+# Sử dụng các lệnh dưới đây để chạy ngầm (background) không bị chặn (block) Terminal:
+
+# Dành cho PowerShell (Windows):
+Start-Process emulator -ArgumentList "-avd Pixel_5"
+
+# Dành cho Command Prompt (CMD - Windows):
+start emulator -avd Pixel_5
+
+# Dành cho Git Bash / macOS / Linux:
+emulator -avd Pixel_5 > /dev/null 2>&1 &
+```
+
+### 3. Theo dõi Log của Backend (Docker)
+* Khi cần lấy mã OTP (đăng nhập Admin) hoặc Password Reset Token (trong môi trường development):
+```powershell
+# Xem 50 dòng log mới nhất của Backend container
+docker logs edurag_remote_e2e-app-1 --tail 50
+
+# Xem log chạy liên tục (Real-time live log)
+docker logs -f edurag_remote_e2e-app-1
+
+# Kiểm tra danh sách các container Docker đang chạy và trạng thái của chúng
+docker ps
+```
+
+---
+
 ## 📝 Quy Tắc Phát Triển Cho Developer
 1. **Tuyệt đối cấm viết gộp (Anti-Monolith)**: Bất kỳ thành phần giao diện nhỏ nào có khả năng tái sử dụng hoặc hiển thị độc lập phải được tách ra thư mục `ui/components/`. File Screen chính chỉ thiết lập khung chứa.
 2. **Giữ UI Stateless**: Màn hình Compose chỉ được nhận trạng thái và phát sự kiện ra ngoài. Logic và API call phải nằm trong ViewModel hoặc Delegate.

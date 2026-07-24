@@ -25,6 +25,7 @@ class AuthViewModel(
     val profileState: StateFlow<UiLoadState<UserUiModel>> = delegate.profileState
     val registerState: StateFlow<UiLoadState<UserUiModel>> = delegate.registerState
     val forgotPasswordState: StateFlow<UiLoadState<Unit>> = delegate.forgotPasswordState
+    val resetPasswordState: StateFlow<UiLoadState<Unit>> = delegate.resetPasswordState
 
     fun login(email: String, pass: String) {
         delegate.login(email, pass)
@@ -44,6 +45,18 @@ class AuthViewModel(
 
     fun forgotPassword(email: String) {
         delegate.forgotPassword(email)
+    }
+
+    fun resetPassword(token: String, newPass: String) {
+        delegate.resetPassword(token, newPass)
+    }
+
+    fun resetForgotPasswordState() {
+        delegate.resetForgotPasswordState()
+    }
+
+    fun resetResetPasswordState() {
+        delegate.resetResetPasswordState()
     }
 
     fun loadProfile() {

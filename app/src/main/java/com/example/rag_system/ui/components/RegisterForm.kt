@@ -45,24 +45,17 @@ fun RegisterForm(
             .fillMaxWidth()
             .background(BrandSurface, RoundedCornerShape(12.dp))
             .border(1.dp, BrandBorderSubtle, RoundedCornerShape(12.dp))
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Tạo tài khoản",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                text = "Tạo tài khoản sinh viên",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = BrandTextPrimary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Điền thông tin để đăng ký tài khoản sinh viên",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BrandTextSecondary,
-                textAlign = TextAlign.Center
             )
         }
 
@@ -88,20 +81,27 @@ fun RegisterForm(
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next)
         )
-        EduRAGTextField(
-            value = studentCode,
-            onValueChange = { studentCode = it },
-            placeholderText = "Mã sinh viên",
-            leadingIcon = Icons.Default.AccountBox,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-        EduRAGTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            placeholderText = "Số điện thoại",
-            leadingIcon = Icons.Default.Phone,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            EduRAGTextField(
+                value = studentCode,
+                onValueChange = { studentCode = it },
+                placeholderText = "Mã SV",
+                leadingIcon = Icons.Default.AccountBox,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                modifier = Modifier.weight(1f)
+            )
+            EduRAGTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                placeholderText = "Số ĐT",
+                leadingIcon = Icons.Default.Phone,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                modifier = Modifier.weight(1f)
+            )
+        }
         EduRAGTextField(
             value = dob,
             onValueChange = { dob = it },

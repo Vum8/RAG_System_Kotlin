@@ -53,3 +53,11 @@ data class ChangePasswordRequestDto(
     @SerializedName("newPassword") val newPassword: String
 )
 
+data class ForgotPasswordRequestDto(
+    @SerializedName("email") val email: String
+)
+
+data class ResetPasswordRequestDto(
+    @SerializedName("token") val token: String,
+    @SerializedName("newPassword") val newPassword: String
+)
