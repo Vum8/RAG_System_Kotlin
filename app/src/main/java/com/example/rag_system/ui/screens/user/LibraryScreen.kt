@@ -34,17 +34,23 @@ import com.example.rag_system.ui.theme.*
 @Composable
 fun LibraryScreen(
     libraryState: UiLoadState<List<DocumentUiModel>>,
-    onReloadLibrary: () -> Unit,
+    onReloadLibrary: (String) -> Unit,
     onDocumentClick: (String) -> Unit,
     onTabSelected: (String) -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedFilter by rememberSaveable { mutableStateOf("Tất cả") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var isFirstLoad by remember { mutableStateOf(true) }
 
-    LaunchedEffect(libraryState) {
-        if (libraryState is UiLoadState.Idle) {
-            onReloadLibrary()
+    LaunchedEffect(searchQuery) {
+        if (isFirstLoad) {
+            isFirstLoad = false
+            onReloadLibrary(searchQuery)
+        } else {
+            // Debounce 500ms để tránh gọi API liên tục khi gõ
+            kotlinx.coroutines.delay(500)
+            onReloadLibrary(searchQuery)
         }
     }
 
@@ -105,9 +111,29 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            LibraryFilterChips(
-                selectedFilter = selectedFilter,
-                onFilterSelected = { selectedFilter = it }
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Tìm kiếm tài liệu học tập...", color = BrandTextSecondary) },
+                leadingIcon = { Text("🔍", fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Text("❌", fontSize = 12.sp)
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BrandPrimary,
+                    unfocusedBorderColor = BrandBorderSubtle,
+                    focusedContainerColor = BrandSurface,
+                    unfocusedContainerColor = BrandSurface
+                )
             )
 
             Box(
@@ -135,7 +161,7 @@ fun LibraryScreen(
                                 color = BrandErrorDestructive,
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                            EduRAGButton(text = "Thử lại", onClick = onReloadLibrary)
+                            EduRAGButton(text = "Thử lại", onClick = { onReloadLibrary(searchQuery) })
                         }
                     }
                     is UiLoadState.Empty -> {
@@ -154,18 +180,10 @@ fun LibraryScreen(
                     }
                     is UiLoadState.Success -> {
                         val allDocs = libraryState.data
-                        val filteredDocuments = remember(allDocs, selectedFilter) {
-                            when (selectedFilter) {
-                                "Tất cả" -> allDocs
-                                "Slide bài giảng" -> allDocs.filter { it.fileFormat == DocumentFileFormat.SLIDE }
-                                "Tài liệu đọc" -> allDocs.filter { it.fileFormat == DocumentFileFormat.PDF || it.fileFormat == DocumentFileFormat.WORD }
-                                else -> allDocs
-                            }
-                        }
 
-                        if (filteredDocuments.isEmpty()) {
+                        if (allDocs.isEmpty()) {
                             Text(
-                                text = "Không có tài liệu nào thuộc bộ lọc này.",
+                                text = "Không tìm thấy tài liệu phù hợp.",
                                 color = BrandTextSecondary,
                                 modifier = Modifier.align(Alignment.Center)
                             )
@@ -177,7 +195,7 @@ fun LibraryScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(filteredDocuments, key = { it.id }) { document ->
+                                items(allDocs, key = { it.id }) { document ->
                                     val (color, emoji) = when (document.fileFormat) {
                                         DocumentFileFormat.PDF -> Color(0xFFDCFCE7) to "🐍"
                                         DocumentFileFormat.SLIDE -> Color(0xFFE0F2FE) to "📁"
@@ -185,10 +203,22 @@ fun LibraryScreen(
                                         else -> Color(0xFFFEF3C7) to "🗄️"
                                     }
 
+                                    val pageText = if (document.pageOrSlideCount > 0) {
+                                        "${document.pageOrSlideCount} trang"
+                                    } else {
+                                        ""
+                                    }
+                                    val sizeText = document.fileSizeText
+                                    val detailText = if (pageText.isNotEmpty() && sizeText.isNotEmpty()) {
+                                        "$pageText • $sizeText"
+                                    } else {
+                                        pageText.ifEmpty { sizeText }
+                                    }
+
                                     DocumentCard(
                                         title = document.title,
                                         categoryLabel = document.category,
-                                        infoText = "${document.pageOrSlideCount} trang/slide",
+                                        infoText = detailText,
                                         bannerColor = color,
                                         iconEmoji = emoji,
                                         onViewClick = {

@@ -20,10 +20,10 @@ class DocumentRouteDelegate(
     private val _libraryState = MutableStateFlow<UiLoadState<List<DocumentUiModel>>>(UiLoadState.Idle)
     val libraryState: StateFlow<UiLoadState<List<DocumentUiModel>>> = _libraryState.asStateFlow()
 
-    fun loadLibraryDocuments() {
+    fun loadLibraryDocuments(search: String = "") {
         scope.launch {
             _libraryState.value = UiLoadState.Loading
-            when (val result = documentRepository.getLibraryDocuments()) {
+            when (val result = documentRepository.getLibraryDocuments(search)) {
                 is ApiResult.Success -> {
                     if (result.data.isEmpty()) {
                         _libraryState.value = UiLoadState.Empty

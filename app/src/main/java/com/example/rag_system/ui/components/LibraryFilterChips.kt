@@ -24,7 +24,7 @@ fun LibraryFilterChips(
     onFilterSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val filters = listOf("Tất cả", "Chương 1", "Chương 2", "Chương 3", "Slide bài giảng", "Tài liệu đọc")
+    val filters = listOf("Tất cả", "Slide bài giảng", "Tài liệu đọc")
 
     LazyRow(
         modifier = modifier

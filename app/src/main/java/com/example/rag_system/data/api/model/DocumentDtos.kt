@@ -9,11 +9,17 @@ data class DocumentDto(
     @SerializedName("originalFilename") val originalFilename: String = "",
     @SerializedName("fileType") val fileType: String = "",
     @SerializedName("fileSizeBytes") val fileSizeBytes: Long = 0,
+    @SerializedName("fileSize") val fileSize: Long = 0, // Dành cho API Library
+    @SerializedName("pageCount") val pageCount: Int? = null, // Dành cho API Library
     @SerializedName("processingStatus") val processingStatus: String = "",
     @SerializedName("visibilityStatus") val visibilityStatus: String = "",
     @SerializedName("processedAt") val processedAt: String? = null,
     @SerializedName("createdAt") val createdAt: String? = null,
-    @SerializedName("updatedAt") val updatedAt: String? = null
+    @SerializedName("updatedAt") val updatedAt: String? = null,
+    @SerializedName("originalAvailable") val originalAvailable: Boolean = false, // Dành cho API Library
+    @SerializedName("previewAvailable") val previewAvailable: Boolean = false,
+    @SerializedName("previewUrl") val previewUrl: String? = null,
+    @SerializedName("previewMimeType") val previewMimeType: String? = null
 )
 
 data class DocumentListResponseDto(

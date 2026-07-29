@@ -11,6 +11,7 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 /**
  * Interface Retrofit gọi các đầu API xem danh sách và chi tiết tài liệu RAG.
@@ -22,14 +23,27 @@ interface DocumentApiService {
         @Part file: MultipartBody.Part
     ): BaseApiResponseDto<DocumentDto>
 
-    @GET("api/documents")
+    @GET("api/library/documents")
     suspend fun listDocuments(
         @Query("offset") offset: Int = 0,
         @Query("limit") limit: Int = 20,
-        @Query("search") search: String = "",
-        @Query("visibilityStatus") visibilityStatus: String = "VISIBLE"
+        @Query("search") search: String = ""
     ): BaseApiResponseDto<DocumentListResponseDto>
 
     @GET("api/documents/{id}")
-    suspend fun getDocumentDetail(@Path("id") documentId: Long): BaseApiResponseDto<DocumentDetailResponseDto>
+    suspend fun getDocumentDetail(
+        @Path("id") id: String
+    ): BaseApiResponseDto<DocumentDetailResponseDto>
+
+    @GET("api/library/documents/{id}/source")
+    @Streaming
+    suspend fun downloadDocument(
+        @Path("id") id: String
+    ): okhttp3.ResponseBody
+
+    @GET("api/library/documents/{id}/preview")
+    @Streaming
+    suspend fun downloadDocumentPreview(
+        @Path("id") id: String
+    ): okhttp3.ResponseBody
 }

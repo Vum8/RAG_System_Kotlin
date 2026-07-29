@@ -17,6 +17,7 @@ import com.example.rag_system.ui.viewmodels.DocumentViewModel
 @Composable
 fun MainTabScreen(
     chatViewModel: ChatViewModel,
+    documentViewModel: DocumentViewModel,
     onBackClick: () -> Unit,
     onProfileClick: () -> Unit,
     onDocumentClick: (String) -> Unit,
@@ -30,7 +31,6 @@ fun MainTabScreen(
     val sessionMessagesState by chatViewModel.sessionMessagesState.collectAsState()
     val draftInputText = chatViewModel.draftInputText
 
-    val documentViewModel = remember { DocumentViewModel() }
     val libraryState by documentViewModel.libraryState.collectAsState()
 
     Crossfade(
@@ -80,8 +80,8 @@ fun MainTabScreen(
             "documents" -> {
                 LibraryScreen(
                     libraryState = libraryState,
-                    onReloadLibrary = {
-                        documentViewModel.loadLibraryDocuments()
+                    onReloadLibrary = { query ->
+                        documentViewModel.loadLibraryDocuments(query)
                     },
                     onDocumentClick = onDocumentClick,
                     onTabSelected = { selectedTab ->

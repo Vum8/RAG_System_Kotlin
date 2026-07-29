@@ -25,19 +25,13 @@ class ChatRepository : BaseRepository() {
         currentSessionId = sessionId
     }
 
-    private val mockHistory = listOf(
-        ChatSessionUiModel("101", "Tìm hiểu kiến trúc Von Neumann", "Đặc trưng lớn nhất của kiến trúc Von Neumann...", "14-07-2026", "Kiến trúc máy tính"),
-        ChatSessionUiModel("102", "So sánh hệ điều hành Windows và Linux", "Hệ điều hành mã nguồn mở Linux...", "13-07-2026", "Hệ điều hành"),
-        ChatSessionUiModel("103", "Hướng dẫn cấu hình mạng LAN", "Địa chỉ IP tĩnh và cơ chế DHCP...", "12-07-2026", "Mạng máy tính")
-    )
+
 
     /**
      * Lấy danh sách lịch sử các phiên hội thoại RAG từ Backend hoặc Mock.
      */
     suspend fun getChatHistory(): ApiResult<List<ChatSessionUiModel>> {
-        if (AppConfig.USE_MOCK_CHAT) {
-            return ApiResult.Success(mockHistory)
-        }
+
         return safeApiCall {
             val response = chatService.listSessions(offset = 0, limit = 50)
             val sessionDtos = response.data?.sessions ?: emptyList()
@@ -57,42 +51,7 @@ class ChatRepository : BaseRepository() {
      * Gửi truy vấn hỏi đáp RAG tới Backend hoặc xử lý Mock.
      */
     suspend fun sendChatQuery(query: String): ApiResult<MessageUiModel> {
-        if (AppConfig.USE_MOCK_CHAT) {
-            // Giả lập AI suy nghĩ một chút
-            kotlinx.coroutines.delay(800)
-            
-            val responseText = when {
-                query.contains("Neumann", ignoreCase = true) || query.contains("Von", ignoreCase = true) -> 
-                    "Kiến trúc Von Neumann (còn được gọi là mô hình Von Neumann) mô tả một thiết kế máy tính sử dụng chung một không gian bộ nhớ vật lý để lưu trữ cả chương trình và dữ liệu. Mô hình này bao gồm CPU (với ALU và các thanh ghi), bộ điều khiển, bộ nhớ chính và thiết bị ngoại vi vào/ra."
-                query.contains("mạng", ignoreCase = true) || query.contains("IP", ignoreCase = true) -> 
-                    "Mạng máy tính là một tập hợp các thiết bị máy tính được kết nối với nhau để chia sẻ tài nguyên và thông tin. Địa chỉ IP (Internet Protocol) là một nhãn số được gán cho mỗi thiết bị tham gia vào mạng để định danh và định tuyến dữ liệu."
-                else -> 
-                    "Tôi đã nhận được câu hỏi: '$query'. Theo tài liệu học tập của hệ thống EduRAG, kiến thức này thuộc phạm vi tài liệu 'Kiến trúc máy tính cơ bản'. Bạn có thể xem thêm chi tiết trong file đính kèm bên dưới hoặc tài liệu tham khảo trong Thư viện."
-            }
 
-            val citations = listOf(
-                SourceCitationUiModel(
-                    sourceDocumentName = "Kiến trúc máy tính",
-                    pageNumber = 2,
-                    chapterSection = "1.2 Mô hình Von Neumann",
-                    rawExtractedText = "Đặc trưng lớn nhất của kiến trúc Von Neumann là chương trình và dữ liệu được lưu trữ chung trong cùng một không gian bộ nhớ vật lý."
-                )
-            )
-
-            if (currentSessionId == null) {
-                currentSessionId = 101L
-            }
-
-            return ApiResult.Success(
-                MessageUiModel(
-                    id = UUID.randomUUID().toString(),
-                    content = responseText,
-                    isFromUser = false,
-                    sendTime = "Vừa xong",
-                    citations = citations
-                )
-            )
-        }
 
         return safeApiCall {
             var sessionId = currentSessionId
@@ -141,63 +100,7 @@ class ChatRepository : BaseRepository() {
      * Lấy toàn bộ danh sách tin nhắn của một phiên chat cụ thể từ Backend hoặc Mock.
      */
     suspend fun getSessionMessages(sessionId: Long): ApiResult<List<MessageUiModel>> {
-        if (AppConfig.USE_MOCK_CHAT) {
-            currentSessionId = sessionId
-            val mockMsgs = when (sessionId) {
-                101L -> listOf(
-                    MessageUiModel("m1", "Mô hình Von Neumann hoạt động thế nào?", true, "14-07-2026 21:00"),
-                    MessageUiModel(
-                        id = "m2",
-                        content = "Mô hình Von Neumann là nền tảng của hầu hết thiết kế máy tính hiện đại. Đặc trưng lớn nhất là chương trình và dữ liệu được lưu trữ chung trong cùng một không gian bộ nhớ vật lý.",
-                        isFromUser = false,
-                        sendTime = "14-07-2026 21:01",
-                        citations = listOf(
-                            SourceCitationUiModel(
-                                sourceDocumentName = "Kiến trúc máy tính",
-                                pageNumber = 2,
-                                chapterSection = "1.2 Mô hình Von Neumann",
-                                rawExtractedText = "Đặc trưng lớn nhất của kiến trúc Von Neumann là chương trình và dữ liệu được lưu trữ chung trong cùng một không gian bộ nhớ vật lý."
-                            )
-                        )
-                    )
-                )
-                102L -> listOf(
-                    MessageUiModel("m3", "Windows và Linux khác nhau như thế nào?", true, "13-07-2026 10:00"),
-                    MessageUiModel(
-                        id = "m4",
-                        content = "Hệ điều hành Windows là hệ điều hành mã nguồn đóng của Microsoft, dễ tiếp cận người dùng phổ thông. Linux là hệ điều hành mã nguồn mở, có tính an mật cao và được dùng rộng rãi trên các hệ thống máy chủ RAG.",
-                        isFromUser = false,
-                        sendTime = "13-07-2026 10:02",
-                        citations = listOf(
-                            SourceCitationUiModel(
-                                sourceDocumentName = "Hệ điều hành cơ bản",
-                                pageNumber = 5,
-                                chapterSection = "2.1 So sánh nhân hệ điều hành",
-                                rawExtractedText = "Hệ điều hành mã nguồn mở Linux được thiết kế cho sự ổn định và bảo mật cao trong các ứng dụng máy chủ RAG."
-                            )
-                        )
-                    )
-                )
-                else -> listOf(
-                    MessageUiModel("m5", "Địa chỉ IP tĩnh là gì?", true, "12-07-2026 09:15"),
-                    MessageUiModel(
-                        id = "m6",
-                        content = "Địa chỉ IP tĩnh là một địa chỉ IP cố định được thiết lập thủ công cho thiết bị, không thay đổi theo thời gian giống như IP động cấp từ DHCP.",
-                        isFromUser = false,
-                        sendTime = "12-07-2026 09:16",
-                        citations = listOf(
-                            SourceCitationUiModel(
-                                sourceDocumentName = "Mạng máy tính",
-                                pageNumber = 12,
-                                chapterSection = "3.2 Định cấu hình mạng cục bộ",
-                                rawExtractedText = "Địa chỉ IP tĩnh giúp duy trì kết nối ổn định cho các thiết bị cần làm máy chủ dịch vụ cục bộ."
-                            )
-                        )
-                    )
-                )
-            }
-            return ApiResult.Success(mockMsgs)
-        }
+
 
         return safeApiCall {
             currentSessionId = sessionId

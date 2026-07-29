@@ -18,5 +18,8 @@ data class DocumentUiModel(
     val title: String = "",
     val category: String = "",
     val fileFormat: DocumentFileFormat = DocumentFileFormat.PDF,
-    val pageOrSlideCount: Int = 0
+    val pageOrSlideCount: Int = 0,
+    val fileSizeText: String = "",
+    val previewAvailable: Boolean = false,
+    val previewUrl: String? = null
 )

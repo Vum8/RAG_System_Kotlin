@@ -282,11 +282,12 @@ fun ChatScreen(
         }
 
         // BottomSheet giới thiệu trường/app và đánh giá
+        val toastManager = LocalToastManager.current
         if (showAppInfo) {
             AppInfoBottomSheet(
                 onDismissRequest = { showAppInfo = false },
                 onSendFeedback = { rating, comment ->
-                    Toast.makeText(context, "Cảm ơn bạn đã đánh giá $rating sao cho EduRAG!", Toast.LENGTH_LONG).show()
+                    toastManager.showToast("Cảm ơn bạn đã đánh giá $rating sao cho EduRAG!", ToastType.SUCCESS)
                 }
             )
         }

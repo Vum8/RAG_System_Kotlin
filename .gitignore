@@ -38,3 +38,7 @@ google-services.json
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Project Documentation
+docs/
+
