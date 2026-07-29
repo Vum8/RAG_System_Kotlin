@@ -41,4 +41,10 @@ Thumbs.db
 
 # Project Documentation
 docs/
+*.md
+!/README.md
+*.pdf
+*.docx
+*.doc
+*.txt
 
