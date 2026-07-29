@@ -5,9 +5,18 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import android.widget.Toast
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -69,6 +78,36 @@ fun DocumentReaderScreen(
     var downloadProgress by remember { mutableStateOf(0) }
     var isPdfRenderError by remember { mutableStateOf(false) }
     var extractedText by remember { mutableStateOf("") }
+
+    // Quản lý trạng thái Responsive khi xoay ngang màn hình đọc tài liệu
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var isControlsVisible by rememberSaveable { mutableStateOf(true) }
+    var showGuidance by rememberSaveable { mutableStateOf(true) }
+
+    // Xử lý nút Back hệ thống/cử chỉ vuốt ngược: Khóa dọc lập tức trước khi pop backstack để tránh lag/vỡ giao diện màn hình trước
+    BackHandler {
+        val activity = context as? Activity
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        onBackClick()
+    }
+
+    // Cho phép tự động xoay ngang dọc dựa trên cảm biến khi ở màn hình này, và khóa lại chiều dọc khi thoát ra
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
+
+    // Tự động tắt hướng dẫn chạm 2 lần sau 5 giây khi người dùng quay ngang màn hình
+    LaunchedEffect(isLandscape) {
+        if (isLandscape && showGuidance) {
+            kotlinx.coroutines.delay(5000)
+            showGuidance = false
+        }
+    }
     val charsPerPage = 1500
 
     LaunchedEffect(documentId) {
@@ -124,51 +163,60 @@ fun DocumentReaderScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = BrandSurface,
         topBar = {
-            EduRAGTopAppBar(
-                navigationContent = {
-                    Text(
-                        text = "Quay lại",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = BrandPrimary,
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .clickable { onBackClick() }
-                    )
-                },
-                centerContent = {
-                    Text(
-                        text = documentTitle,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = BrandTextPrimary,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        maxLines = 1
-                    )
-                }
-            )
+            if (!isLandscape || isControlsVisible) {
+                EduRAGTopAppBar(
+                    navigationContent = {
+                        Text(
+                            text = "Quay lại",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = BrandPrimary,
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .clickable {
+                                    val activity = context as? Activity
+                                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                    onBackClick()
+                                }
+                        )
+                    },
+                    centerContent = {
+                        Text(
+                            text = documentTitle,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = BrandTextPrimary,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            maxLines = 1
+                        )
+                    }
+                )
+            }
         },
         bottomBar = {
-            DocumentReaderControls(
-                currentPage = currentPage,
-                totalPages = totalPages,
-                isBookmarked = currentPage in bookmarkedPages,
-                onPageChanged = { currentPage = it },
-                onBookmarkToggled = {
-                    if (currentPage in bookmarkedPages) {
-                        bookmarkedPages.remove(currentPage)
-                        toastManager.showToast("Đã bỏ lưu dấu trang $currentPage!", ToastType.INFO)
-                    } else {
-                        bookmarkedPages.add(currentPage)
-                        toastManager.showToast("Đã lưu dấu trang $currentPage thành công!", ToastType.SUCCESS)
+            if (!isLandscape || isControlsVisible) {
+                DocumentReaderControls(
+                    currentPage = currentPage,
+                    totalPages = totalPages,
+                    isBookmarked = currentPage in bookmarkedPages,
+                    onPageChanged = { currentPage = it },
+                    onBookmarkToggled = {
+                        if (currentPage in bookmarkedPages) {
+                            bookmarkedPages.remove(currentPage)
+                            toastManager.showToast("Đã bỏ lưu dấu trang $currentPage!", ToastType.INFO)
+                        } else {
+                            bookmarkedPages.add(currentPage)
+                            toastManager.showToast("Đã lưu dấu trang $currentPage thành công!", ToastType.SUCCESS)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
+        val padding = if (isLandscape && !isControlsVisible) PaddingValues(0.dp) else innerPadding
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(padding)
         ) {
             if (isLoadingFile) {
                 Column(
@@ -193,6 +241,11 @@ fun DocumentReaderScreen(
                 PdfPageViewer(
                     file = pdfFile!!,
                     pageNumber = currentPage,
+                    isLandscape = isLandscape,
+                    onSingleTap = {
+                        isControlsVisible = !isControlsVisible
+                        if (showGuidance) showGuidance = false
+                    },
                     onPageCountLoaded = { totalPages = it },
                     onRenderError = { isPdfRenderError = true },
                     modifier = Modifier.fillMaxSize()
@@ -207,14 +260,64 @@ fun DocumentReaderScreen(
                     "Đang trích xuất nội dung văn bản..."
                 }
 
-                DocumentContentArea(
-                    chapterTitle = if (extractedText.isNotEmpty()) "Tài liệu trích xuất văn bản" else pageContent.chapterTitle,
-                    sectionTitle = "Trang số $currentPage",
-                    bodyTextBefore = pageText,
-                    highlightedSnippet = if (extractedText.isNotEmpty()) "Nội dung được trích xuất trực tiếp từ file Word/Text gốc của giáo trình." else pageContent.highlightedSnippet,
-                    bodyTextAfter = "",
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(isLandscape) {
+                            if (isLandscape) {
+                                detectTapGestures(
+                                    onTap = {
+                                        isControlsVisible = !isControlsVisible
+                                        if (showGuidance) showGuidance = false
+                                    }
+                                )
+                            }
+                        }
+                ) {
+                    DocumentContentArea(
+                        chapterTitle = if (extractedText.isNotEmpty()) "Tài liệu trích xuất văn bản" else pageContent.chapterTitle,
+                        sectionTitle = "Trang số $currentPage",
+                        bodyTextBefore = pageText,
+                        highlightedSnippet = if (extractedText.isNotEmpty()) "Nội dung được trích xuất trực tiếp từ file Word/Text gốc của giáo trình." else pageContent.highlightedSnippet,
+                        bodyTextAfter = "",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            // Hiển thị hướng dẫn chạm khi quay ngang màn hình
+            AnimatedVisibility(
+                visible = isLandscape && showGuidance,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (isControlsVisible) 80.dp else 24.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Black.copy(alpha = 0.75f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "💡 Chạm 1 lần để ẩn/hiện công cụ. Vuốt kéo để đọc tài liệu",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Đã hiểu",
+                            color = Color(0xFF818CF8),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { showGuidance = false }
+                        )
+                    }
+                }
             }
         }
     }
@@ -228,6 +331,8 @@ fun DocumentReaderScreen(
 fun PdfPageViewer(
     file: File,
     pageNumber: Int,
+    isLandscape: Boolean = false,
+    onSingleTap: () -> Unit = {},
     onPageCountLoaded: (Int) -> Unit,
     onRenderError: () -> Unit,
     modifier: Modifier = Modifier
@@ -267,8 +372,14 @@ fun PdfPageViewer(
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    // Tự động khôi phục tỷ lệ 1x khi người dùng chuyển trang
+    // Tự động khôi phục tỷ lệ 1x khi chuyển trang
     LaunchedEffect(pageNumber) {
+        scale = 1f
+        offset = Offset.Zero
+    }
+
+    // Khôi phục tỷ lệ và góc di chuyển khi xoay màn hình để tránh lệch tọa độ hiển thị
+    LaunchedEffect(isLandscape) {
         scale = 1f
         offset = Offset.Zero
     }
@@ -290,30 +401,46 @@ fun PdfPageViewer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .pointerInput(isLandscape) {
                     detectTapGestures(
+                        onTap = {
+                            if (isLandscape) {
+                                onSingleTap()
+                            }
+                        },
                         onDoubleTap = { tapOffset ->
-                            if (scale > 1f) {
-                                scale = 1f
-                                offset = Offset.Zero
-                            } else {
-                                scale = 2.5f
+                            if (!isLandscape) {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2.5f
+                                }
                             }
                         }
                     )
                 }
-                .pointerInput(Unit) {
+                .pointerInput(isLandscape) {
                     detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(1f, 5f)
-                        if (scale > 1f) {
-                            // Tính toán giới hạn kéo động chính xác theo tỷ lệ phóng to thực tế
-                            val maxXOffset = (imageWidthPx * (scale - 1f)) / 2f
-                            val maxYOffset = if (imageHeightPx * scale > screenHeightPx) {
-                                (imageHeightPx * scale - screenHeightPx) / 2f
-                            } else {
-                                (imageHeightPx * (scale - 1f)) / 2f
-                            }
-                            
+                        if (!isLandscape) {
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                        } else {
+                            scale = 1f
+                        }
+
+                        // Tính toán giới hạn kéo động chính xác theo kích thước thực tế sau phóng to so với màn hình
+                        val maxXOffset = if (imageWidthPx * scale > screenWidthPx) {
+                            (imageWidthPx * scale - screenWidthPx) / 2f
+                        } else {
+                            0f
+                        }
+                        val maxYOffset = if (imageHeightPx * scale > screenHeightPx) {
+                            (imageHeightPx * scale - screenHeightPx) / 2f
+                        } else {
+                            0f
+                        }
+
+                        if (maxXOffset > 0f || maxYOffset > 0f) {
                             offset = Offset(
                                 x = (offset.x + pan.x).coerceIn(-maxXOffset, maxXOffset),
                                 y = (offset.y + pan.y).coerceIn(-maxYOffset, maxYOffset)

@@ -127,4 +127,14 @@ class ChatRepository : BaseRepository() {
             }
         }
     }
+
+    /**
+     * Xóa một phiên hội thoại cụ thể khỏi Backend.
+     */
+    suspend fun deleteSession(sessionId: Long): ApiResult<Unit> {
+        return safeApiCall {
+            chatService.deleteSession(sessionId)
+            Unit
+        }
+    }
 }

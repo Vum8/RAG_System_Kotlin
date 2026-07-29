@@ -37,6 +37,8 @@ fun HistoryScreen(
     onSessionClick: (ChatSessionUiModel) -> Unit,
     onNewChatClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onDeleteSession: (String, (Boolean) -> Unit) -> Unit,
+    onDeleteAll: ((Boolean) -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -109,12 +111,24 @@ fun HistoryScreen(
                         onTabSelected("chat")
                     },
                     onDeleteSession = { session ->
-                        sessions.remove(session)
-                        toastManager.showToast("Đã xóa phiên chat", ToastType.SUCCESS)
+                        onDeleteSession(session.id) { success ->
+                            if (success) {
+                                sessions.remove(session)
+                                toastManager.showToast("Đã xóa phiên chat", ToastType.SUCCESS)
+                            } else {
+                                toastManager.showToast("Lỗi: Không thể xóa phiên chat", ToastType.ERROR)
+                            }
+                        }
                     },
                     onDeleteAll = {
-                        sessions.clear()
-                        toastManager.showToast("Đã xóa toàn bộ lịch sử", ToastType.SUCCESS)
+                        onDeleteAll { success ->
+                            if (success) {
+                                sessions.clear()
+                                toastManager.showToast("Đã xóa toàn bộ lịch sử", ToastType.SUCCESS)
+                            } else {
+                                toastManager.showToast("Lỗi: Không thể xóa toàn bộ lịch sử", ToastType.ERROR)
+                            }
+                        }
                     },
                     onNewChatClick = {
                         onNewChatClick()

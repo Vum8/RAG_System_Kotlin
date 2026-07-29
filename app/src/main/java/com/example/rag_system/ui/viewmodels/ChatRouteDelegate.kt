@@ -94,4 +94,19 @@ class ChatRouteDelegate(
             }
         }
     }
+
+    fun deleteSession(sessionId: Long, onResult: (Boolean) -> Unit) {
+        scope.launch {
+            when (val result = chatRepository.deleteSession(sessionId)) {
+                is ApiResult.Success -> {
+                    onResult(true)
+                    // Tải lại lịch sử sau khi xóa thành công
+                    loadChatHistory()
+                }
+                is ApiResult.Error -> {
+                    onResult(false)
+                }
+            }
+        }
+    }
 }

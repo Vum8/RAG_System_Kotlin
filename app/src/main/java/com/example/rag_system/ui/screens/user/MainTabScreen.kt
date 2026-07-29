@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.rag_system.ui.viewmodels.ChatViewModel
 import com.example.rag_system.ui.viewmodels.DocumentViewModel
+import com.example.rag_system.ui.state.UiLoadState
 
 /**
  * Màn hình chứa Tab chính (MainTabScreen) quản lý việc chuyển đổi giữa Chat, Lịch sử và Thư viện.
@@ -80,6 +81,39 @@ fun MainTabScreen(
                         chatViewModel.startNewSession()
                     },
                     onProfileClick = onProfileClick,
+                    onDeleteSession = { sessionId, callback ->
+                        val id = sessionId.toLongOrNull() ?: 0L
+                        if (id > 0L) {
+                            chatViewModel.deleteSession(id) { success ->
+                                callback(success)
+                            }
+                        } else {
+                            callback(false)
+                        }
+                    },
+                    onDeleteAll = { callback ->
+                        val historyState = chatHistoryState
+                        if (historyState is UiLoadState.Success) {
+                            val sessionIds = historyState.data.mapNotNull { it.id.toLongOrNull() }
+                            if (sessionIds.isEmpty()) {
+                                callback(true)
+                                return@HistoryScreen
+                            }
+                            var completed = 0
+                            var overallSuccess = true
+                            sessionIds.forEach { id ->
+                                chatViewModel.deleteSession(id) { success ->
+                                    completed++
+                                    if (!success) overallSuccess = false
+                                    if (completed == sessionIds.size) {
+                                        callback(overallSuccess)
+                                    }
+                                }
+                            }
+                        } else {
+                            callback(true)
+                        }
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }

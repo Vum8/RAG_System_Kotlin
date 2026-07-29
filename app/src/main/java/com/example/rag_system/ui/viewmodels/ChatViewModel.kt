@@ -58,5 +58,9 @@ class ChatViewModel(
     fun sendChatQuery(query: String) {
         delegate.sendChatQuery(query)
     }
+
+    fun deleteSession(sessionId: Long, onResult: (Boolean) -> Unit) {
+        delegate.deleteSession(sessionId, onResult)
+    }
 }
 

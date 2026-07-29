@@ -191,6 +191,8 @@ fun DocumentReaderBottomSheet(
                         PdfPageViewer(
                             file = pdfFile!!,
                             pageNumber = currentPage,
+                            isLandscape = false,
+                            onSingleTap = {},
                             onPageCountLoaded = { totalPages = it },
                             onRenderError = { isPdfRenderError = true },
                             modifier = Modifier.fillMaxSize()
