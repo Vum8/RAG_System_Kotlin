@@ -21,6 +21,12 @@ import com.example.rag_system.ui.components.*
 import com.example.rag_system.ui.models.UserUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+
+import com.example.rag_system.data.session.TokenManager
 
 /**
  * Màn hình Hồ sơ cá nhân (ProfileScreen).
@@ -36,9 +42,24 @@ fun ProfileScreen(
     onChangePassword: (String, String, (Boolean, String) -> Unit) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
+    val toastManager = LocalToastManager.current
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    var localAvatarUri by remember {
+        mutableStateOf(
+            TokenManager.getLocalAvatarUri()?.let { Uri.parse(it) }
+        )
+    }
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            localAvatarUri = uri
+            TokenManager.saveLocalAvatarUri(uri.toString())
+            toastManager.showToast("Đã chọn ảnh đại diện mới cục bộ!")
+        }
+    }
 
     LaunchedEffect(profileState) {
         if (profileState is UiLoadState.Idle) {
@@ -145,7 +166,13 @@ fun ProfileScreen(
                     ) {
                         ProfileHeaderCard(
                             userName = user.name,
-                            userEmail = user.email
+                            userEmail = user.email,
+                            avatarUri = localAvatarUri,
+                            onEditAvatarClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
                         )
 
                         ProfileTabControl(
@@ -180,20 +207,20 @@ fun ProfileScreen(
                             onClick = {
                                 if (selectedTab == "personal") {
                                     if (editableName.isBlank()) {
-                                        Toast.makeText(context, "Họ tên không được để trống", Toast.LENGTH_SHORT).show()
+                                        toastManager.showToast("Họ tên không được để trống", ToastType.ERROR)
                                     } else {
                                         onUpdateProfile(editableName, editablePhone.ifBlank { null }) { success, msg ->
-                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                            toastManager.showToast(msg, if (success) ToastType.SUCCESS else ToastType.ERROR)
                                         }
                                     }
                                 } else {
                                     if (currentPass.isEmpty() || newPass.isEmpty() || confirmPass.isEmpty()) {
-                                        Toast.makeText(context, "Vui lòng điền đủ các trường mật khẩu", Toast.LENGTH_SHORT).show()
+                                        toastManager.showToast("Vui lòng điền đủ các trường mật khẩu", ToastType.ERROR)
                                     } else if (newPass != confirmPass) {
-                                        Toast.makeText(context, "Mật khẩu xác nhận không khớp", Toast.LENGTH_SHORT).show()
+                                        toastManager.showToast("Mật khẩu xác nhận không khớp", ToastType.ERROR)
                                     } else {
                                         onChangePassword(currentPass, newPass) { success, msg ->
-                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                            toastManager.showToast(msg, if (success) ToastType.SUCCESS else ToastType.ERROR)
                                             if (success) {
                                                 currentPass = ""
                                                 newPass = ""

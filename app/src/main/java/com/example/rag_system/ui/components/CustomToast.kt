@@ -46,20 +46,20 @@ fun CustomToast(
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when (type) {
-        ToastType.SUCCESS -> Color(0xFFE8F5E9)
-        ToastType.ERROR -> Color(0xFFFFEBEE)
+        ToastType.SUCCESS -> BrandSuccessContainer
+        ToastType.ERROR -> BrandErrorContainer
         ToastType.INFO -> BrandSurfaceContainerLow
     }
 
     val borderColor = when (type) {
-        ToastType.SUCCESS -> Color(0xFF4CAF50)
+        ToastType.SUCCESS -> BrandSuccess
         ToastType.ERROR -> BrandErrorDestructive
         ToastType.INFO -> BrandPrimary
     }
 
     val iconColor = when (type) {
-        ToastType.SUCCESS -> Color(0xFF2E7D32)
-        ToastType.ERROR -> Color(0xFFC62828)
+        ToastType.SUCCESS -> BrandOnSuccessContainer
+        ToastType.ERROR -> BrandError
         ToastType.INFO -> BrandPrimary
     }
 

@@ -22,6 +22,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.rag_system.ui.theme.*
 
 /**
@@ -33,6 +40,9 @@ fun ResetPasswordForm(
     onResetPasswordSubmitted: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     var token by rememberSaveable { mutableStateOf("") }
     var newPassword by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
@@ -101,6 +111,8 @@ fun ResetPasswordForm(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
                     if (token.isNotBlank() && newPassword.isNotBlank()) {
                         onResetPasswordSubmitted(token, newPassword)
                     }
@@ -109,13 +121,29 @@ fun ResetPasswordForm(
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Text(if (passwordVisible) "Ẩn" else "Hiện", style = MaterialTheme.typography.labelSmall)
                     }
+                },
+                modifier = Modifier.onKeyEvent { keyEvent ->
+                    if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyDown) {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        if (token.isNotBlank() && newPassword.isNotBlank()) {
+                            onResetPasswordSubmitted(token, newPassword)
+                        }
+                        true
+                    } else {
+                        false
+                    }
                 }
             )
         }
 
         EduRAGButton(
             text = "Xác nhận đặt lại",
-            onClick = { onResetPasswordSubmitted(token, newPassword) },
+            onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onResetPasswordSubmitted(token, newPassword)
+            },
             enabled = token.isNotBlank() && newPassword.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
             height = 52.dp,

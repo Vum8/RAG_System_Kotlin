@@ -79,6 +79,7 @@ class ChatRepository : BaseRepository() {
 
             val citationsList = assistantDto.citations.map { citationDto ->
                 SourceCitationUiModel(
+                    documentId = citationDto.documentId.toString(),
                     sourceDocumentName = citationDto.documentTitle ?: "Tài liệu hệ thống",
                     pageNumber = citationDto.pageNumber ?: 1,
                     chapterSection = citationDto.sectionTitle ?: "Nội dung trích xuất",
@@ -109,6 +110,7 @@ class ChatRepository : BaseRepository() {
             msgDtos.map { dto ->
                 val citationsList = dto.citations.map { c ->
                     SourceCitationUiModel(
+                        documentId = c.documentId.toString(),
                         sourceDocumentName = c.documentTitle ?: "Tài liệu hệ thống",
                         pageNumber = c.pageNumber ?: 1,
                         chapterSection = c.sectionTitle ?: "Nội dung trích xuất",

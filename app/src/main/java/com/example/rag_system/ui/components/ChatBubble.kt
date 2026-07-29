@@ -177,21 +177,44 @@ fun EduAiDetailedResponse(
     }
 
     // Tự động phân tách và chèn các pin số vào AnnotatedString
-    val responseText = remember(activeContent, citations) {
-        buildAnnotatedString {
-            val regex = Regex("\\[(\\d+)\\]")
-            val matches = regex.findAll(activeContent).toList()
-            val parts = activeContent.split(regex)
+    // Định dạng các gạch đầu dòng danh sách (* hoặc -) thành dấu • đẹp mắt
+    val formattedContent = remember(activeContent) {
+        activeContent.lines().joinToString("\n") { line ->
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+                val prefix = line.substring(0, line.indexOf(trimmed))
+                prefix + "• " + trimmed.substring(2)
+            } else {
+                line
+            }
+        }
+    }
 
-            parts.forEachIndexed { index, part ->
-                append(part)
-                if (index < matches.size) {
-                    val pinNumber = matches[index].groupValues[1].toIntOrNull() ?: 1
-                    if (pinNumber <= citations.size) {
-                        appendInlineContent("pin_$pinNumber", "[$pinNumber]")
-                    } else {
-                        // Nếu không có nguồn tương ứng, hiển thị text thường
-                        append("[$pinNumber]")
+    // Tự động phân tách, in đậm các chữ nằm giữa ** và chèn các pin số vào AnnotatedString
+    val responseText = remember(formattedContent, citations) {
+        buildAnnotatedString {
+            // Tách theo dấu ** để xác định phần chữ in đậm (bold) và chữ thường
+            val boldParts = formattedContent.split("**")
+            
+            boldParts.forEachIndexed { partIndex, part ->
+                val isBold = partIndex % 2 != 0
+                val style = if (isBold) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle()
+                
+                withStyle(style) {
+                    val citationRegex = Regex("\\[(\\d+)\\]")
+                    val matches = citationRegex.findAll(part).toList()
+                    val textSegments = part.split(citationRegex)
+                    
+                    textSegments.forEachIndexed { segmentIndex, segment ->
+                        append(segment)
+                        if (segmentIndex < matches.size) {
+                            val pinNumber = matches[segmentIndex].groupValues[1].toIntOrNull() ?: 1
+                            if (pinNumber <= citations.size) {
+                                appendInlineContent("pin_$pinNumber", "[$pinNumber]")
+                            } else {
+                                append("[$pinNumber]")
+                            }
+                        }
                     }
                 }
             }

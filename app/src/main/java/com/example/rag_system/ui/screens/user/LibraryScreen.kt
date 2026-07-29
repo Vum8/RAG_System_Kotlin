@@ -21,11 +21,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.example.rag_system.ui.components.*
 import com.example.rag_system.ui.models.DocumentFileFormat
 import com.example.rag_system.ui.models.DocumentUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
+import android.net.Uri
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import com.example.rag_system.data.session.TokenManager
 
 /**
  * Màn hình Thư viện tài liệu (LibraryScreen) hiển thị danh sách tài liệu học tập từ Backend EduRAG.
@@ -40,6 +53,10 @@ fun LibraryScreen(
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isFirstLoad by remember { mutableStateOf(true) }
 
@@ -79,21 +96,7 @@ fun LibraryScreen(
                     }
                 },
                 actionContent = {
-                    Surface(
-                        shape = CircleShape,
-                        color = BrandSurfaceContainerLow,
-                        border = BorderStroke(1.5.dp, BrandPrimary),
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(36.dp)
-                            .clickable {
-                                onProfileClick()
-                            }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("A", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 14.sp)
-                        }
-                    }
+                    UserAvatarButton(onClick = onProfileClick)
                 }
             )
         },
@@ -127,6 +130,13 @@ fun LibraryScreen(
                     }
                 },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    }
+                ),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = BrandPrimary,

@@ -34,3 +34,10 @@ val BrandSecondaryFixed = Color(0xFFD4E4FC)
 val BrandErrorDestructive = Color(0xFFFF4D4F)
 val BrandSurfaceContainerHighest = Color(0xFFE4E1ED)
 val BrandOutline = Color(0xFF767586)
+
+// Semantic Colors for Toasts and Statuses
+val BrandSuccess = Color(0xFF4CAF50)
+val BrandSuccessContainer = Color(0xFFE8F5E9)
+val BrandOnSuccessContainer = Color(0xFF2E7D32)
+val BrandError = Color(0xFFC62828)
+val BrandErrorContainer = Color(0xFFFFEBEE)

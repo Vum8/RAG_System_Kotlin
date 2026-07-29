@@ -29,7 +29,7 @@ fun AppInfoBottomSheet(
 ) {
     var rating by rememberSaveable { mutableStateOf(5) }
     var feedbackText by rememberSaveable { mutableStateOf("") }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -43,40 +43,40 @@ fun AppInfoBottomSheet(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
+                .padding(bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // ── 1. Phần giới thiệu Trường & App ──
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // Logo trường học bo góc tròn
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(BrandPrimary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "🎓", fontSize = 28.sp)
+                    Text(text = "🎓", fontSize = 24.sp)
                 }
 
                 Text(
                     text = "Học viện Công nghệ Bưu chính Viễn thông",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
                     color = BrandTextPrimary,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
                     text = "EduRAG — Trợ lý học tập AI thông minh, hỗ trợ sinh viên tra cứu tài liệu học trình và giải đáp mọi thắc mắc học tập tức thì.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                     color = BrandTextSecondary,
                     textAlign = TextAlign.Center,
-                    lineHeight = 20.sp
+                    lineHeight = 18.sp
                 )
             }
 
@@ -85,7 +85,7 @@ fun AppInfoBottomSheet(
             // ── 2. Phần đánh giá ứng dụng ──
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -100,7 +100,7 @@ fun AppInfoBottomSheet(
                     onRatingChanged = { rating = it }
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 // Ô nhập ý kiến đóng góp ngắn
                 OutlinedTextField(
@@ -108,11 +108,11 @@ fun AppInfoBottomSheet(
                     onValueChange = { feedbackText = it },
                     placeholder = { Text("Hãy chia sẻ ý kiến đóng góp của bạn...", color = BrandOutlineVariant) },
                     singleLine = false,
-                    maxLines = 3,
+                    maxLines = 2,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp),
+                        .height(72.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = BrandPrimary,
                         unfocusedBorderColor = BrandBorderSubtle,

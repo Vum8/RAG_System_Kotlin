@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.components.ChatHistoryList
 import com.example.rag_system.ui.components.EduRAGBottomNavBar
 import com.example.rag_system.ui.components.EduRAGTopAppBar
+import com.example.rag_system.ui.components.LocalToastManager
+import com.example.rag_system.ui.components.ToastType
+import com.example.rag_system.ui.components.UserAvatarButton
 import com.example.rag_system.ui.models.ChatSessionUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
@@ -32,10 +35,12 @@ fun HistoryScreen(
     chatHistoryState: UiLoadState<List<ChatSessionUiModel>>,
     onTabSelected: (String) -> Unit,
     onSessionClick: (ChatSessionUiModel) -> Unit,
+    onNewChatClick: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val toastManager = LocalToastManager.current
 
     // Quản lý danh sách sessions cục bộ để xử lý xóa tại UI (mock UX)
     val sessions = remember(chatHistoryState) {
@@ -73,27 +78,7 @@ fun HistoryScreen(
                     }
                 },
                 actionContent = {
-                    // Avatar người dùng
-                    Surface(
-                        shape = CircleShape,
-                        color = BrandSurfaceContainerLow,
-                        border = BorderStroke(1.5.dp, BrandPrimary),
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(36.dp)
-                            .clickable {
-                                onProfileClick()
-                            }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "A",
-                                fontWeight = FontWeight.Bold,
-                                color = BrandPrimary,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
+                    UserAvatarButton(onClick = onProfileClick)
                 }
             )
         },
@@ -125,11 +110,15 @@ fun HistoryScreen(
                     },
                     onDeleteSession = { session ->
                         sessions.remove(session)
-                        Toast.makeText(context, "Đã xóa phiên chat", Toast.LENGTH_SHORT).show()
+                        toastManager.showToast("Đã xóa phiên chat", ToastType.SUCCESS)
                     },
                     onDeleteAll = {
                         sessions.clear()
-                        Toast.makeText(context, "Đã xóa toàn bộ lịch sử", Toast.LENGTH_SHORT).show()
+                        toastManager.showToast("Đã xóa toàn bộ lịch sử", ToastType.SUCCESS)
+                    },
+                    onNewChatClick = {
+                        onNewChatClick()
+                        onTabSelected("chat")
                     },
                     modifier = Modifier
                         .fillMaxSize()

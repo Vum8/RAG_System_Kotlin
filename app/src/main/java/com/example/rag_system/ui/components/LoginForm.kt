@@ -26,6 +26,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.rag_system.ui.theme.*
 
 /**
@@ -38,6 +45,9 @@ fun LoginForm(
     onForgotPasswordClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
@@ -130,10 +140,24 @@ fun LoginForm(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
                     if (email.isNotBlank() && password.isNotBlank()) {
                         onLoginSubmitted(email, password, rememberMeChecked)
                     }
-                })
+                }),
+                modifier = Modifier.onKeyEvent { keyEvent ->
+                    if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyDown) {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        if (email.isNotBlank() && password.isNotBlank()) {
+                            onLoginSubmitted(email, password, rememberMeChecked)
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
             )
         }
 
@@ -158,7 +182,11 @@ fun LoginForm(
         // Nút Đăng nhập chính dùng EduRAGButton chung
         EduRAGButton(
             text = "Đăng nhập",
-            onClick = { onLoginSubmitted(email, password, rememberMeChecked) },
+            onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onLoginSubmitted(email, password, rememberMeChecked)
+            },
             enabled = email.isNotBlank() && password.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
             trailingContent = {

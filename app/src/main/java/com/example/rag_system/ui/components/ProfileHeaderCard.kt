@@ -22,6 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.theme.*
 
+import android.net.Uri
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.remember
+
 /**
  * Thẻ thông tin cá nhân trên cùng (ProfileHeaderCard).
  * Hiển thị Avatar tròn lớn, nút sửa ảnh đè lên, Tên, Email và nhãn Đã xác thực.
@@ -30,9 +39,28 @@ import com.example.rag_system.ui.theme.*
 fun ProfileHeaderCard(
     userName: String,
     userEmail: String,
+    avatarUri: Uri?,
+    onEditAvatarClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val bitmap = remember(avatarUri) {
+        if (avatarUri != null) {
+            try {
+                if (Build.VERSION.SDK_INT < 28) {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, avatarUri)
+                } else {
+                    val source = ImageDecoder.createSource(context.contentResolver, avatarUri)
+                    ImageDecoder.decodeBitmap(source)
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
 
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -52,7 +80,7 @@ fun ProfileHeaderCard(
                     .size(96.dp)
                     .padding(bottom = 8.dp)
             ) {
-                // Vòng tròn chứa chữ cái đại diện
+                // Vòng tròn chứa ảnh đại diện hoặc chữ cái
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -61,12 +89,21 @@ fun ProfileHeaderCard(
                         .border(1.5.dp, BrandPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = userName.firstOrNull()?.toString()?.uppercase() ?: "A",
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandPrimary
-                    )
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Avatar",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = userName.firstOrNull()?.toString()?.uppercase() ?: "A",
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary
+                        )
+                    }
                 }
 
                 // Nút sửa ảnh tròn nhỏ ở góc dưới bên phải
@@ -78,7 +115,7 @@ fun ProfileHeaderCard(
                         .border(1.dp, BrandBorderSubtle, CircleShape)
                         .align(Alignment.BottomEnd)
                         .clickable {
-                            // Xử lý mở bộ sưu tập/chụp ảnh
+                            onEditAvatarClick()
                         },
                     contentAlignment = Alignment.Center
                 ) {

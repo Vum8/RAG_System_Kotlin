@@ -32,6 +32,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.rag_system.ui.theme.*
 
 /**
@@ -44,6 +51,9 @@ fun ChatInputBar(
     onSendClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     Surface(
         color = BrandSurface,
         border = BorderStroke(1.dp, BrandBorderSubtle),
@@ -69,7 +79,20 @@ fun ChatInputBar(
                             color = BrandTextSecondary
                         )
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onKeyEvent { keyEvent ->
+                            if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyDown) {
+                                if (inputText.isNotBlank()) {
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                    onSendClick()
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                        },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -77,7 +100,15 @@ fun ChatInputBar(
                         unfocusedIndicatorColor = Color.Transparent
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { onSendClick() }),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            if (inputText.isNotBlank()) {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                onSendClick()
+                            }
+                        }
+                    ),
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -89,7 +120,13 @@ fun ChatInputBar(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .clickable { onSendClick() }
+                        .clickable {
+                            if (inputText.isNotBlank()) {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                onSendClick()
+                            }
+                        }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(

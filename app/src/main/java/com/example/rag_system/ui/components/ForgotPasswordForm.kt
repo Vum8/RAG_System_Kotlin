@@ -19,6 +19,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.rag_system.ui.theme.*
 
 /**
@@ -30,6 +37,9 @@ fun ForgotPasswordForm(
     onSendLinkSubmitted: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     var email by rememberSaveable { mutableStateOf("") }
 
     Column(
@@ -77,17 +87,35 @@ fun ForgotPasswordForm(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
                     if (email.isNotBlank()) {
                         onSendLinkSubmitted(email)
                     }
-                })
+                }),
+                modifier = Modifier.onKeyEvent { keyEvent ->
+                    if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyDown) {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        if (email.isNotBlank()) {
+                            onSendLinkSubmitted(email)
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
             )
         }
 
         // Nút gửi link đặt lại dùng EduRAGButton chung
         EduRAGButton(
             text = "Gửi link đặt lại",
-            onClick = { onSendLinkSubmitted(email) },
+            onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onSendLinkSubmitted(email)
+            },
             enabled = email.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
             height = 52.dp,

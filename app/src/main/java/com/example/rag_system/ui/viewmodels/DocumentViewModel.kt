@@ -52,13 +52,18 @@ class DocumentViewModel(
 
     /**
      * Tải ngầm (Prefetch) tài liệu đọc dở gần nhất của sinh viên.
+     * Nếu server trả về 404 (tài liệu không còn tồn tại), tự động xóa ID khỏi bộ nhớ
+     * để tránh gọi API lỗi lặp đi lặp lại mỗi lần đăng nhập.
      */
     fun prefetchLastReadDocument(context: android.content.Context) {
         val lastReadId = documentRepository.getLastReadDocumentId(context)
         if (lastReadId != null) {
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                // Tải ngầm, không cần lắng nghe tiến trình UI
-                documentRepository.downloadDocumentFile(context, lastReadId)
+                val file = documentRepository.downloadDocumentFile(context, lastReadId)
+                if (file == null) {
+                    // Tài liệu không còn tồn tại trên server → xóa ID cũ để không retry 404 liên tục
+                    documentRepository.clearLastReadDocumentId(context)
+                }
             }
         }
     }

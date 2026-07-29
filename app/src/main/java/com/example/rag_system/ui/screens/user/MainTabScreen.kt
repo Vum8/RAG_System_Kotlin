@@ -49,6 +49,9 @@ fun MainTabScreen(
                     onSendMessage = { query ->
                         chatViewModel.sendChatQuery(query)
                     },
+                    onNewChatClick = {
+                        chatViewModel.startNewSession()
+                    },
                     onBackClick = onBackClick,
                     onSourceClick = {
                         // Trình đọc overlay tích hợp trực tiếp trong ChatScreen
@@ -72,6 +75,9 @@ fun MainTabScreen(
                             chatViewModel.loadSessionMessages(sessionId)
                         }
                         currentTab = "chat"
+                    },
+                    onNewChatClick = {
+                        chatViewModel.startNewSession()
                     },
                     onProfileClick = onProfileClick,
                     modifier = Modifier.fillMaxSize()

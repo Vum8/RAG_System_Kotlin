@@ -55,17 +55,13 @@ class DocumentRepository : BaseRepository() {
         }
     }
 
-    /**
-     * Trả về nội dung trang tài liệu phục vụ màn hình đọc (Reader) từ Mock hoặc API.
-     */
     fun getDocumentPageContent(page: Int): ReaderPageContentUiModel {
-
         return ReaderPageContentUiModel(
-            chapterTitle = "Giáo trình trích xuất từ EduRAG",
+            chapterTitle = "Chi tiết tài liệu học tập",
             sectionTitle = "Trang số $page",
-            bodyTextBefore = "Bạn đang xem nội dung trang số $page của tài liệu được lưu trữ trên hệ thống EduRAG.",
-            highlightedSnippet = "Hệ thống RAG hỗ trợ truy cập nhanh chóng và chính xác các đoạn kiến thức quan trọng.",
-            bodyTextAfter = "Sử dụng tính năng hỏi đáp AI bên dưới để tra cứu chi tiết hơn về phần nội dung này."
+            bodyTextBefore = "Để xem và tương tác toàn văn trang số $page một cách chính xác nhất với định dạng PDF đầy đủ...",
+            highlightedSnippet = "Vui lòng truy cập phân hệ 'Thư viện' và mở tài liệu này trực tiếp từ danh sách.",
+            bodyTextAfter = "Tính năng xem nhanh từ ô Chat chỉ hỗ trợ hiển thị bối cảnh của đoạn trích dẫn được AI sử dụng để trả lời."
         )
     }
 
@@ -198,6 +194,14 @@ class DocumentRepository : BaseRepository() {
     fun getLastReadDocumentId(context: Context): String? {
         val prefs = context.getSharedPreferences("edurag_prefs", Context.MODE_PRIVATE)
         return prefs.getString("last_read_doc_id", null)
+    }
+
+    /**
+     * Xóa ID tài liệu đọc dở khỏi SharedPreferences (dùng khi tài liệu không còn tồn tại trên server).
+     */
+    fun clearLastReadDocumentId(context: Context) {
+        val prefs = context.getSharedPreferences("edurag_prefs", Context.MODE_PRIVATE)
+        prefs.edit().remove("last_read_doc_id").apply()
     }
 
     private fun determineFileFormat(title: String, originalFilename: String, fileType: String): DocumentFileFormat {

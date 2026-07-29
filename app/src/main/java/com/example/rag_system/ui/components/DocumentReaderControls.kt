@@ -19,6 +19,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.rag_system.ui.theme.*
 
 /**
@@ -35,6 +37,9 @@ fun DocumentReaderControls(
     onBookmarkToggled: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     // Lưu tạm vị trí slider
     var sliderValue by rememberSaveable(currentPage) { mutableStateOf(currentPage.toFloat()) }
     var isEditingPage by rememberSaveable { mutableStateOf(false) }
@@ -100,6 +105,8 @@ fun DocumentReaderControls(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(onDone = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
                         val pageVal = inputPageText.toIntOrNull()
                         if (pageVal != null && pageVal in 1..totalPages) {
                             onPageChanged(pageVal)

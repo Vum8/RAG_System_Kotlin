@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -23,6 +24,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.rag_system.ui.theme.*
 
 /**
@@ -33,6 +41,9 @@ fun RegisterForm(
     onRegisterSubmitted: (String, String, String, String, String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var fullName by rememberSaveable { mutableStateOf("") }
@@ -107,12 +118,35 @@ fun RegisterForm(
             onValueChange = { dob = it },
             placeholderText = "Ngày sinh (VD: 2000-01-01)",
             leadingIcon = Icons.Default.DateRange,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                if (email.isNotBlank() && password.isNotBlank() && fullName.isNotBlank()) {
+                    onRegisterSubmitted(email, password, fullName, phone, studentCode, dob)
+                }
+            }),
+            modifier = Modifier.onKeyEvent { keyEvent ->
+                if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyDown) {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                    if (email.isNotBlank() && password.isNotBlank() && fullName.isNotBlank()) {
+                        onRegisterSubmitted(email, password, fullName, phone, studentCode, dob)
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
         )
 
         EduRAGButton(
             text = "Đăng ký",
-            onClick = { onRegisterSubmitted(email, password, fullName, phone, studentCode, dob) },
+            onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onRegisterSubmitted(email, password, fullName, phone, studentCode, dob)
+            },
             enabled = email.isNotBlank() && password.isNotBlank() && fullName.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         )

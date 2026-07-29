@@ -52,6 +52,7 @@ fun ChatScreen(
     inputText: String,
     onInputTextChanged: (String) -> Unit,
     onSendMessage: (String) -> Unit,
+    onNewChatClick: () -> Unit,
     onBackClick: () -> Unit,
     onSourceClick: (SourceCitationUiModel) -> Unit,
     onTabSelected: (String) -> Unit,
@@ -129,6 +130,23 @@ fun ChatScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            // Nút Tạo Chat mới ➕
+                            Surface(
+                                shape = CircleShape,
+                                color = BrandSurfaceContainerLow,
+                                border = BorderStroke(1.dp, BrandBorderSubtle),
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clickable {
+                                        onNewChatClick()
+                                        activeMessages.clear()
+                                    }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("➕", fontSize = 14.sp)
+                                }
+                            }
+
                             // Nút thông tin ℹ️ mở AppInfoBottomSheet
                             Surface(
                                 shape = CircleShape,
@@ -146,21 +164,7 @@ fun ChatScreen(
                             }
 
                             // Avatar người dùng
-                            Surface(
-                                shape = CircleShape,
-                                color = BrandSurfaceContainerLow,
-                                border = BorderStroke(1.5.dp, BrandPrimary),
-                                modifier = Modifier
-                                    .padding(end = 12.dp)
-                                    .size(36.dp)
-                                    .clickable {
-                                        onProfileClick()
-                                    }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text("A", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 14.sp)
-                                }
-                            }
+                            UserAvatarButton(onClick = onProfileClick)
                         }
                     }
                 )
@@ -304,6 +308,7 @@ fun EduRAGPreview() {
             inputText = "",
             onInputTextChanged = {},
             onSendMessage = {},
+            onNewChatClick = {},
             onBackClick = {},
             onSourceClick = {},
             onTabSelected = {},

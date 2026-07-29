@@ -10,6 +10,7 @@ import android.content.SharedPreferences
 object TokenManager {
     private const val PREFS_NAME = "edurag_auth_prefs"
     private const val KEY_JWT_TOKEN = "jwt_token"
+    private const val KEY_LOCAL_AVATAR_URI = "local_avatar_uri"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -41,6 +42,27 @@ object TokenManager {
      */
     fun getToken(): String? {
         return sharedPreferences?.getString(KEY_JWT_TOKEN, null)
+    }
+
+    /**
+     * Lưu trữ đường dẫn ảnh đại diện cục bộ.
+     */
+    fun saveLocalAvatarUri(uri: String?) {
+        sharedPreferences?.edit()?.apply {
+            if (uri.isNullOrEmpty()) {
+                remove(KEY_LOCAL_AVATAR_URI)
+            } else {
+                putString(KEY_LOCAL_AVATAR_URI, uri)
+            }
+            apply()
+        }
+    }
+
+    /**
+     * Lấy đường dẫn ảnh đại diện cục bộ hiện tại nếu có.
+     */
+    fun getLocalAvatarUri(): String? {
+        return sharedPreferences?.getString(KEY_LOCAL_AVATAR_URI, null)
     }
 
     /**

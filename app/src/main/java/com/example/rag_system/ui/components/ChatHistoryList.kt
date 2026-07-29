@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rag_system.ui.models.ChatSessionUiModel
+import com.example.rag_system.ui.theme.BrandPrimary
 import com.example.rag_system.ui.theme.BrandErrorDestructive
 import com.example.rag_system.ui.theme.BrandTextPrimary
 
@@ -27,10 +28,11 @@ fun ChatHistoryList(
     onSessionClick: (ChatSessionUiModel) -> Unit,
     onDeleteSession: (ChatSessionUiModel) -> Unit,
     onDeleteAll: () -> Unit,
+    onNewChatClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDeleteAllDialog by remember { mutableStateOf(false) }
-
+ 
     if (showDeleteAllDialog) {
         DeleteAllConfirmDialog(
             onDismiss = { showDeleteAllDialog = false },
@@ -40,13 +42,13 @@ fun ChatHistoryList(
             }
         )
     }
-
+ 
     Column(modifier = modifier.fillMaxSize()) {
-        // ── Header: "Gần đây" + nút "Xóa tất cả" ──
+        // ── Header: "Gần đây" + cụm điều hướng (Tạo mới & Xóa tất cả) ──
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -55,15 +57,30 @@ fun ChatHistoryList(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = BrandTextPrimary
             )
-
-            if (sessions.isNotEmpty()) {
-                TextButton(onClick = { showDeleteAllDialog = true }) {
+ 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Nút Tạo mới thiết kế phẳng nhẹ nhàng đồng bộ với Xóa tất cả
+                TextButton(onClick = onNewChatClick) {
                     Text(
-                        text = "🗑  Xóa tất cả",
+                        text = "💬  Tạo mới",
                         fontSize = 13.sp,
-                        color = BrandErrorDestructive,
-                        fontWeight = FontWeight.Medium
+                        color = BrandPrimary,
+                        fontWeight = FontWeight.SemiBold
                     )
+                }
+
+                if (sessions.isNotEmpty()) {
+                    TextButton(onClick = { showDeleteAllDialog = true }) {
+                        Text(
+                            text = "🗑  Xóa tất cả",
+                            fontSize = 13.sp,
+                            color = BrandErrorDestructive,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }

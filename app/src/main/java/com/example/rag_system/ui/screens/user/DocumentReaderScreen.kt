@@ -59,6 +59,7 @@ fun DocumentReaderScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val toastManager = LocalToastManager.current
     var currentPage by rememberSaveable { mutableStateOf(1) }
     var totalPages by remember { mutableStateOf(10) }
     val bookmarkedPages = remember { mutableStateListOf<Int>() }
@@ -155,10 +156,10 @@ fun DocumentReaderScreen(
                 onBookmarkToggled = {
                     if (currentPage in bookmarkedPages) {
                         bookmarkedPages.remove(currentPage)
-                        Toast.makeText(context, "Đã bỏ lưu dấu trang $currentPage!", Toast.LENGTH_SHORT).show()
+                        toastManager.showToast("Đã bỏ lưu dấu trang $currentPage!", ToastType.INFO)
                     } else {
                         bookmarkedPages.add(currentPage)
-                        Toast.makeText(context, "Đã lưu dấu trang $currentPage thành công!", Toast.LENGTH_SHORT).show()
+                        toastManager.showToast("Đã lưu dấu trang $currentPage thành công!", ToastType.SUCCESS)
                     }
                 }
             )
