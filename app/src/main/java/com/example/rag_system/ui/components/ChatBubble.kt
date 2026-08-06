@@ -148,32 +148,37 @@ fun EduAiDetailedResponse(
         content
     }
 
-    // Sinh bộ InlineTextContent động dựa trên số lượng nguồn trích dẫn
+    // Sinh bộ InlineTextContent động dựa trên citationOrder thực tế
     val inlineContentMap = remember(citations) {
-        citations.mapIndexed { index, _ ->
-            "pin_${index + 1}" to InlineTextContent(
+        citations.associate { citation ->
+            "pin_${citation.citationOrder}" to InlineTextContent(
                 Placeholder(
                     width = 24.sp,
-                    height = 20.sp,
+                    height = 24.sp,
                     placeholderVerticalAlign = PlaceholderVerticalAlign.Center
                 )
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "${index + 1}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF464555)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE2E8F0)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${citation.citationOrder}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF464555)
+                        )
+                    }
                 }
             }
-        }.toMap()
+        }
     }
 
     // Tự động phân tách và chèn các pin số vào AnnotatedString
@@ -201,18 +206,28 @@ fun EduAiDetailedResponse(
                 val style = if (isBold) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle()
                 
                 withStyle(style) {
-                    val citationRegex = Regex("\\[(\\d+)\\]")
+                    // Regex nâng cấp hỗ trợ gộp, ví dụ: [1], [1, 2], [1,2,3]
+                    val citationRegex = Regex("\\[([\\\\d,\\\\s]+)\\]")
                     val matches = citationRegex.findAll(part).toList()
                     val textSegments = part.split(citationRegex)
                     
                     textSegments.forEachIndexed { segmentIndex, segment ->
                         append(segment)
                         if (segmentIndex < matches.size) {
-                            val pinNumber = matches[segmentIndex].groupValues[1].toIntOrNull() ?: 1
-                            if (pinNumber <= citations.size) {
-                                appendInlineContent("pin_$pinNumber", "[$pinNumber]")
+                            val numbersStr = matches[segmentIndex].groupValues[1]
+                            val numbers = numbersStr.split(",").mapNotNull { it.trim().toIntOrNull() }
+                            
+                            if (numbers.isNotEmpty()) {
+                                numbers.forEachIndexed { numIdx, num ->
+                                    if (citations.any { it.citationOrder == num }) {
+                                        appendInlineContent("pin_$num", "[$num]")
+                                    } else {
+                                        append("[$num]")
+                                    }
+                                    if (numIdx < numbers.size - 1) append(" ")
+                                }
                             } else {
-                                append("[$pinNumber]")
+                                append("[$numbersStr]")
                             }
                         }
                     }

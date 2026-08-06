@@ -1,14 +1,29 @@
 package com.example.rag_system.navigation
 
+import android.content.ContentValues
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -17,17 +32,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.rag_system.data.session.SessionEvent
 import com.example.rag_system.data.session.SessionEventBus
+import com.example.rag_system.data.session.TokenManager
 import com.example.rag_system.data.api.core.ApiResult
-import androidx.compose.animation.*
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
+
 import com.example.rag_system.ui.components.CustomToast
 import com.example.rag_system.ui.components.LocalToastManager
 import com.example.rag_system.ui.components.ToastManager
@@ -96,7 +103,7 @@ fun AppNavigation(
         Box(modifier = modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
-                startDestination = Screen.Login.route,
+                startDestination = if (TokenManager.getToken().isNullOrEmpty()) Screen.Login.route else Screen.Chat.route,
                 modifier = Modifier.fillMaxSize()
             ) {
                 composable(Screen.Login.route) {
@@ -114,8 +121,8 @@ fun AppNavigation(
 
                     LoginScreen(
                         loginState = loginState,
-                        onLoginSubmitted = { email, pass, _ ->
-                            authViewModel.login(email, pass)
+                        onLoginSubmitted = { email, pass, rememberMe ->
+                            authViewModel.login(email, pass, rememberMe)
                         },
                         onForgotPasswordClick = {
                             navController.navigate(Screen.ForgotPassword.route)
@@ -230,6 +237,17 @@ fun AppNavigation(
 
                 composable(Screen.Profile.route) {
                     val profileState by authViewModel.profileState.collectAsState()
+                    val avatarState by authViewModel.avatarState.collectAsState()
+
+                    LaunchedEffect(avatarState) {
+                        if (avatarState is UiLoadState.Success) {
+                            toastManager.showToast("Cập nhật ảnh đại diện thành công", ToastType.SUCCESS)
+                            authViewModel.resetAvatarState()
+                        } else if (avatarState is UiLoadState.Error) {
+                            toastManager.showToast("Lỗi: ${(avatarState as UiLoadState.Error).message}", ToastType.ERROR)
+                            authViewModel.resetAvatarState()
+                        }
+                    }
 
                     ProfileScreen(
                         profileState = profileState,
@@ -261,6 +279,23 @@ fun AppNavigation(
                                 }
                             }
                         },
+                        onUploadAvatar = { uri ->
+                            val contentResolver = context.contentResolver
+                            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+                            var filename = "avatar.jpg"
+                            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                if (cursor.moveToFirst() && nameIndex >= 0) {
+                                    filename = cursor.getString(nameIndex)
+                                }
+                            }
+                            val inputStream = contentResolver.openInputStream(uri)
+                            if (inputStream != null) {
+                                authViewModel.uploadAvatar(inputStream, mimeType, filename, context)
+                            } else {
+                                toastManager.showToast("Không thể đọc file ảnh", ToastType.ERROR)
+                            }
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -276,6 +311,37 @@ fun AppNavigation(
                         pageContentProvider = { page -> documentViewModel.getPageContent(page) },
                         downloadFileProvider = { ctx, id, progress -> documentViewModel.downloadDocumentFile(ctx, id, progress) },
                         saveHistoryProvider = { ctx, id -> documentViewModel.saveLastReadDocumentId(ctx, id) },
+                        onExportClick = { file ->
+                            try {
+                                val docTitle = documentViewModel.getDocumentTitleById(documentId)
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                    val contentValues = ContentValues().apply {
+                                        put(MediaStore.MediaColumns.DISPLAY_NAME, "EduRAG_${docTitle}.pdf")
+                                        put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                                    }
+                                    val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                                    if (uri != null) {
+                                        context.contentResolver.openOutputStream(uri)?.use { out ->
+                                            file.inputStream().use { input ->
+                                                input.copyTo(out)
+                                            }
+                                        }
+                                        toastManager.showToast("Đã lưu vào thư mục Downloads", ToastType.SUCCESS)
+                                    } else {
+                                        toastManager.showToast("Lỗi tạo file tải xuống", ToastType.ERROR)
+                                    }
+                                } else {
+                                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                                    val destFile = java.io.File(downloadsDir, "EduRAG_${docTitle}.pdf")
+                                    file.copyTo(destFile, overwrite = true)
+                                    toastManager.showToast("Đã lưu vào thư mục Downloads", ToastType.SUCCESS)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                toastManager.showToast("Không thể lưu tài liệu", ToastType.ERROR)
+                            }
+                        },
                         onBackClick = {
                             navController.popBackStack()
                         },

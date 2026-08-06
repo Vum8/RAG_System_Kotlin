@@ -64,6 +64,7 @@ fun DocumentReaderScreen(
     },
     downloadFileProvider: suspend (android.content.Context, String, (Int) -> Unit) -> File? = { _, _, _ -> null },
     saveHistoryProvider: (android.content.Context, String) -> Unit = { _, _ -> },
+    onExportClick: (File) -> Unit = {},
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -188,6 +189,21 @@ fun DocumentReaderScreen(
                             modifier = Modifier.padding(horizontal = 16.dp),
                             maxLines = 1
                         )
+                    },
+                    actionContent = {
+                        if (pdfFile != null && pdfFile!!.exists()) {
+                            Text(
+                                text = "Tải xuống",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = BrandPrimary,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .clickable {
+                                        onExportClick(pdfFile!!)
+                                    }
+                            )
+                        }
                     }
                 )
             }

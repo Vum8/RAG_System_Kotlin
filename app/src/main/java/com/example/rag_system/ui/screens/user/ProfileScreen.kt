@@ -40,24 +40,21 @@ fun ProfileScreen(
     onLogoutClick: () -> Unit,
     onUpdateProfile: (String, String?, (Boolean, String) -> Unit) -> Unit = { _, _, _ -> },
     onChangePassword: (String, String, (Boolean, String) -> Unit) -> Unit = { _, _, _ -> },
+    onUploadAvatar: (Uri) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val toastManager = LocalToastManager.current
     val scrollState = rememberScrollState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    var localAvatarUri by remember {
-        mutableStateOf(
-            TokenManager.getLocalAvatarUri()?.let { Uri.parse(it) }
-        )
-    }
+    val rawAvatarUri by TokenManager.avatarUriFlow.collectAsState()
+    val localAvatarUri = remember(rawAvatarUri) { rawAvatarUri?.let { Uri.parse(it) } }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            localAvatarUri = uri
-            TokenManager.saveLocalAvatarUri(uri.toString())
-            toastManager.showToast("Đã chọn ảnh đại diện mới cục bộ!")
+            onUploadAvatar(uri)
         }
     }
 

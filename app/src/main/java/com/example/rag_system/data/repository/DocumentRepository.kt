@@ -7,11 +7,10 @@ import com.example.rag_system.data.config.AppConfig
 import com.example.rag_system.ui.models.DocumentFileFormat
 import com.example.rag_system.ui.models.DocumentUiModel
 import com.example.rag_system.ui.models.ReaderPageContentUiModel
+import com.example.rag_system.ui.models.SourceCitationUiModel
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.asRequestBody
 
 /**
  * Repository kết nối với Backend RAG_Be để tra cứu danh sách tài liệu học tập trong thư viện.
@@ -23,27 +22,42 @@ class DocumentRepository : BaseRepository() {
 
 
     /**
-     * Lấy danh sách tài liệu đang hiển thị (VISIBLE) từ Backend hoặc Mock.
+     * Lấy danh sách tài liệu thư viện công khai (chỉ READY + VISIBLE).
+     * @param q Tìm kiếm theo title/description/author (canonical param mới).
+     * @param page Trang 1-based (mặc định 1).
+     * @param limit Số phần tử mỗi trang (mặc định 20).
+     * @param fileType Lọc theo loại (PDF/DOCX/TXT), null để lấy hết.
+     * @param sort Sắp xếp (newest/oldest/title_asc/title_desc).
      */
-    suspend fun getLibraryDocuments(search: String = ""): ApiResult<List<DocumentUiModel>> {
-
+    suspend fun getLibraryDocuments(
+        q: String? = null,
+        page: Int = 1,
+        limit: Int = 50,
+        fileType: String? = null,
+        sort: String? = null
+    ): ApiResult<List<DocumentUiModel>> {
         return safeApiCall {
-            val response = documentService.listDocuments(offset = 0, limit = 50, search = search)
+            val response = documentService.listDocuments(
+                q = q?.takeIf { it.isNotBlank() },
+                page = page,
+                limit = limit,
+                fileType = fileType,
+                sort = sort
+            )
             val docDtos = response.data?.documents ?: emptyList()
             docDtos.map { dto ->
-                val format = determineFileFormat(dto.title, dto.originalFilename, dto.fileType)
-                
+                val format = determineFileFormat(dto.title, dto.fileType)
+
                 // Tính toán dung lượng hiển thị
-                val sizeInBytes = if (dto.fileSize > 0) dto.fileSize else dto.fileSizeBytes
                 val sizeText = when {
-                    sizeInBytes >= 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f MB", sizeInBytes.toFloat() / (1024 * 1024))
-                    sizeInBytes >= 1024 -> "${sizeInBytes / 1024} KB"
-                    else -> "$sizeInBytes B"
+                    dto.fileSize >= 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f MB", dto.fileSize.toFloat() / (1024 * 1024))
+                    dto.fileSize >= 1024 -> "${dto.fileSize / 1024} KB"
+                    else -> "${dto.fileSize} B"
                 }
 
                 DocumentUiModel(
                     id = dto.id.toString(),
-                    title = dto.title.ifEmpty { dto.originalFilename },
+                    title = dto.title,
                     category = "Tài liệu học tập",
                     fileFormat = format,
                     pageOrSlideCount = dto.pageCount ?: 0,
@@ -65,38 +79,29 @@ class DocumentRepository : BaseRepository() {
         )
     }
 
-    /**
-     * Upload tài liệu lên hệ thống Backend (giới hạn 20MB, định dạng PDF/DOCX).
-     */
-    suspend fun uploadDocument(file: java.io.File): ApiResult<DocumentUiModel> {
 
+    /**
+     * Lấy chi tiết citation theo ID (session owner only).
+     * Dùng khi user tap vào citation của tin nhắn AI.
+     */
+    suspend fun getCitationDetail(citationId: Long): ApiResult<SourceCitationUiModel> {
         return safeApiCall {
-            val mediaType = if (file.name.endsWith(".pdf", true)) {
-                "application/pdf".toMediaTypeOrNull()
-            } else if (file.name.endsWith(".docx", true)) {
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document".toMediaTypeOrNull()
-            } else {
-                "application/octet-stream".toMediaTypeOrNull()
-            }
-            val requestBody = file.asRequestBody(mediaType)
-            val multipartBody = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestBody)
-            
-            val response = documentService.uploadDocument(multipartBody)
-            val dto = response.data ?: throw IllegalStateException("Không nhận được dữ liệu tài liệu sau khi upload.")
-            
-            val format = determineFileFormat(dto.title, dto.originalFilename, dto.fileType)
-            
-            DocumentUiModel(
-                id = dto.id.toString(),
-                title = dto.title.ifEmpty { dto.originalFilename },
-                category = "Tài liệu học tập",
-                fileFormat = format,
-                pageOrSlideCount = 1, // Giá trị mặc định
-                previewAvailable = dto.previewAvailable,
-                previewUrl = dto.previewUrl
+            val dto = documentService.getCitation(citationId).data
+                ?: throw IllegalStateException("Citation not found")
+            SourceCitationUiModel(
+                citationOrder = dto.citationOrder,
+                documentId = dto.documentId.toString(),
+                sourceDocumentName = dto.documentTitle ?: "",
+                pageNumber = dto.pageNumber,
+                chapterSection = dto.sectionTitle,
+                rawExtractedText = dto.sourceText ?: "",
+                retrievalScore = dto.retrievalScore,
+                rerankScore = dto.rerankScore
+                // sourceLocator: JsonObject – bỏ qua cho đến khi Python tạo locator
             )
         }
     }
+
 
     /**
      * Tải file gốc tài liệu từ Backend lưu vào thư mục Cache cục bộ với cơ chế báo cáo tiến trình (Progress).
@@ -112,11 +117,11 @@ class DocumentRepository : BaseRepository() {
             try {
                 val file = java.io.File(context.cacheDir, "doc_${docId}.pdf")
                 
-                // 1. Kiểm tra chi tiết tài liệu xem có bản PDF xem trước hay không trước khi kiểm tra Cache
+                // 1. Kiểm tra Library document để xem có preview không
                 var usePreview = false
                 try {
-                    val detailResponse = documentService.getDocumentDetail(docId)
-                    val dto = detailResponse.data?.document
+                    val detail = documentService.getLibraryDocument(docId.toLong())
+                    val dto = detail.data
                     usePreview = dto?.previewAvailable == true && !dto.previewUrl.isNullOrEmpty()
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -135,15 +140,16 @@ class DocumentRepository : BaseRepository() {
                     }
                 }
 
-                // Tải file mới (dùng luồng PDF preview hoặc luồng tệp gốc)
+                // Tải file mới theo ưu tiên:
+                // 1. /preview — PDF inline khi previewAvailable (DOCX đã có derived PDF)
+                // 2. /download — canonical attachment, Student dùng được cho mọi fileType
                 var responseBody: okhttp3.ResponseBody? = null
                 if (usePreview) {
                     try {
                         responseBody = documentService.downloadDocumentPreview(docId)
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        // Nếu API /preview bị sập (ví dụ lỗi 500 do BE gặp sự cố Header Unicode), 
-                        // tự động fallback về tải file gốc để đọc tạm bằng Text Viewer.
+                        // Fallback về /download nếu /preview lỗi (409 PREVIEW_UNAVAILABLE)
                         responseBody = documentService.downloadDocument(docId)
                     }
                 } else {
@@ -204,19 +210,15 @@ class DocumentRepository : BaseRepository() {
         prefs.edit().remove("last_read_doc_id").apply()
     }
 
-    private fun determineFileFormat(title: String, originalFilename: String, fileType: String): DocumentFileFormat {
-        val nameLower = originalFilename.lowercase()
+    private fun determineFileFormat(title: String, fileType: String): DocumentFileFormat {
         val titleLower = title.lowercase()
         val typeLower = fileType.lowercase()
-        
         return when {
-            nameLower.endsWith(".ppt") || nameLower.endsWith(".pptx") -> DocumentFileFormat.SLIDE
-            (nameLower.endsWith(".pdf") || typeLower.contains("pdf")) && 
-                (titleLower.contains("slide") || nameLower.contains("slide") ||
-                 titleLower.contains("bài giảng") || nameLower.contains("bài giảng") ||
-                 titleLower.contains("presentation") || nameLower.contains("presentation")) -> DocumentFileFormat.SLIDE
-            nameLower.endsWith(".pdf") || typeLower.contains("pdf") -> DocumentFileFormat.PDF
-            nameLower.endsWith(".doc") || nameLower.endsWith(".docx") || nameLower.endsWith(".txt") -> DocumentFileFormat.WORD
+            typeLower == "pdf" &&
+                (titleLower.contains("slide") || titleLower.contains("bài giảng") ||
+                    titleLower.contains("presentation")) -> DocumentFileFormat.SLIDE
+            typeLower == "pdf" -> DocumentFileFormat.PDF
+            typeLower == "docx" || typeLower == "doc" || typeLower == "txt" -> DocumentFileFormat.WORD
             else -> DocumentFileFormat.OTHER
         }
     }

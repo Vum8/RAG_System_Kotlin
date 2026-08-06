@@ -40,7 +40,11 @@ data class UserProfileResponseDto(
     @SerializedName("phone") val phone: String? = null,
     @SerializedName("status") val status: String = "",
     @SerializedName("student_code") val studentCode: String? = null,
-    @SerializedName("date_of_birth") val dateOfBirth: String? = null
+    @SerializedName("date_of_birth") val dateOfBirth: String? = null,
+    // Avatar — BE trả qua publicProfile(), avatarUrl = "/api/profile/avatar" (relative, fetch với Bearer)
+    @SerializedName("avatarAvailable") val avatarAvailable: Boolean = false,
+    @SerializedName("avatarUrl") val avatarUrl: String? = null,
+    @SerializedName("avatarMimeType") val avatarMimeType: String? = null
 )
 
 data class UpdateProfileRequestDto(

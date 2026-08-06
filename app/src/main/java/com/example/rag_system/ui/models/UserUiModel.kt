@@ -9,5 +9,6 @@ data class UserUiModel(
     val studentId: String = "",
     val phoneNumber: String? = null,
     val avatarUrl: String? = null,
+    val hasAvatar: Boolean = false,
     val isVerified: Boolean = false
 )

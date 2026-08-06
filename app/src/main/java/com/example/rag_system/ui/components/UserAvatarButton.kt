@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +41,8 @@ fun UserAvatarButton(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val avatarUri = remember { TokenManager.getLocalAvatarUri()?.let { Uri.parse(it) } }
+    val rawUri by TokenManager.avatarUriFlow.collectAsState()
+    val avatarUri = remember(rawUri) { rawUri?.let { Uri.parse(it) } }
     val bitmap = remember(avatarUri) {
         if (avatarUri != null) {
             try {

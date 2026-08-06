@@ -20,24 +20,56 @@ class DocumentRouteDelegate(
     private val _libraryState = MutableStateFlow<UiLoadState<List<DocumentUiModel>>>(UiLoadState.Idle)
     val libraryState: StateFlow<UiLoadState<List<DocumentUiModel>>> = _libraryState.asStateFlow()
 
-    fun loadLibraryDocuments(search: String = "") {
+    private var currentPage = 1
+    private var isLastPage = false
+    private var currentQuery = ""
+    private var isFetching = false
+
+    fun loadLibraryDocuments(search: String = "", isLoadMore: Boolean = false) {
+        if (isFetching) return
+        if (isLoadMore && isLastPage) return
+
         scope.launch {
-            _libraryState.value = UiLoadState.Loading
-            when (val result = documentRepository.getLibraryDocuments(search)) {
+            isFetching = true
+            if (!isLoadMore) {
+                currentPage = 1
+                isLastPage = false
+                currentQuery = search
+                _libraryState.value = UiLoadState.Loading
+            }
+
+            when (val result = documentRepository.getLibraryDocuments(q = currentQuery, page = currentPage)) {
                 is ApiResult.Success -> {
-                    if (result.data.isEmpty()) {
-                        _libraryState.value = UiLoadState.Empty
+                    val newData = result.data
+                    if (newData.isEmpty()) {
+                        if (!isLoadMore) {
+                            _libraryState.value = UiLoadState.Empty
+                        }
+                        isLastPage = true
                     } else {
-                        _libraryState.value = UiLoadState.Success(result.data)
+                        val currentData = if (isLoadMore) {
+                            (_libraryState.value as? UiLoadState.Success)?.data ?: emptyList()
+                        } else {
+                            emptyList()
+                        }
+                        _libraryState.value = UiLoadState.Success(currentData + newData)
+                        currentPage++
+                        // API mặc định limit = 50. Nếu nhỏ hơn 50 tức là đã hết data.
+                        if (newData.size < 50) {
+                            isLastPage = true
+                        }
                     }
                 }
                 is ApiResult.Error -> {
-                    _libraryState.value = UiLoadState.Error(
-                        message = result.error.message,
-                        code = result.error.code
-                    )
+                    if (!isLoadMore) {
+                        _libraryState.value = UiLoadState.Error(
+                            message = result.error.message,
+                            code = result.error.code
+                        )
+                    }
                 }
             }
+            isFetching = false
         }
     }
 

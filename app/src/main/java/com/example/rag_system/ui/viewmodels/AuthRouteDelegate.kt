@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.InputStream
 
 /**
  * Route Delegate chuyên trách xử lý nghiệp vụ xác thực và thông tin cá nhân (Auth/Profile) của Sinh viên EduRAG.
@@ -32,16 +33,27 @@ class AuthRouteDelegate(
     private val _resetPasswordState = MutableStateFlow<UiLoadState<Unit>>(UiLoadState.Idle)
     val resetPasswordState: StateFlow<UiLoadState<Unit>> = _resetPasswordState.asStateFlow()
 
-    fun login(email: String, pass: String) {
+    private val _avatarState = MutableStateFlow<UiLoadState<Unit>>(UiLoadState.Idle)
+    val avatarState: StateFlow<UiLoadState<Unit>> = _avatarState.asStateFlow()
+
+    /** State chứa byte[] blob avatar — UI dùng để hiển thị Bitmap, cần revoke khi dời sang ảnh khác. */
+    private val _avatarBytesState = MutableStateFlow<UiLoadState<ByteArray>>(UiLoadState.Idle)
+    val avatarBytesState: StateFlow<UiLoadState<ByteArray>> = _avatarBytesState.asStateFlow()
+
+    fun login(email: String, pass: String, rememberMe: Boolean = true) {
         if (email.isBlank() || pass.isBlank()) {
             _loginState.value = UiLoadState.Error("Vui lòng nhập đầy đủ Email và Mật khẩu.")
             return
         }
         scope.launch {
             _loginState.value = UiLoadState.Loading
-            when (val result = authRepository.login(email, pass)) {
+            when (val result = authRepository.login(email, pass, rememberMe)) {
                 is ApiResult.Success -> {
                     _loginState.value = UiLoadState.Success(result.data)
+                    // Reset profile states for the new session so it fetches fresh data when opened
+                    _profileState.value = UiLoadState.Idle
+                    _avatarState.value = UiLoadState.Idle
+                    _avatarBytesState.value = UiLoadState.Idle
                 }
                 is ApiResult.Error -> {
                     _loginState.value = UiLoadState.Error(
@@ -121,12 +133,19 @@ class AuthRouteDelegate(
         _resetPasswordState.value = UiLoadState.Idle
     }
 
-    fun loadProfile() {
+    fun loadProfile(context: android.content.Context? = null) {
         scope.launch {
             _profileState.value = UiLoadState.Loading
             when (val result = authRepository.getProfile()) {
                 is ApiResult.Success -> {
                     _profileState.value = UiLoadState.Success(result.data)
+                    // Tự động tải blob avatar nếu profile báo có avatar
+                    if (result.data.hasAvatar && context != null) {
+                        loadMyAvatarBytes(context)
+                    } else if (!result.data.hasAvatar) {
+                        // Nếu không có, reset bytes state
+                        resetAvatarBytesState()
+                    }
                 }
                 is ApiResult.Error -> {
                     _profileState.value = UiLoadState.Error(
@@ -141,7 +160,8 @@ class AuthRouteDelegate(
     fun logout() {
         authRepository.logout()
         _loginState.value = UiLoadState.Idle
-        _profileState.value = UiLoadState.Idle
+        // Do NOT reset _profileState to Idle here, otherwise ProfileScreen will automatically 
+        // try to reload the profile without a token, triggering a 401 and double navigation.
     }
 
     fun updateProfile(fullName: String, phone: String?, onResult: (ApiResult<UserUiModel>) -> Unit) {
@@ -159,5 +179,64 @@ class AuthRouteDelegate(
             val result = authRepository.changePassword(currentPass, newPass)
             onResult(result)
         }
+    }
+
+    /**
+     * Upload ảnh đại diện mới. Sau khi thành công sẽ tự động refresh profile.
+     */
+    fun uploadAvatar(inputStream: InputStream, mimeType: String, filename: String, context: android.content.Context) {
+        scope.launch {
+            _avatarState.value = UiLoadState.Loading
+            when (val result = authRepository.uploadAvatar(inputStream, mimeType, filename)) {
+                is ApiResult.Success -> {
+                    _avatarState.value = UiLoadState.Success(Unit)
+                    loadMyAvatarBytes(context) // fetch new avatar directly without reloading entire profile to prevent UI flash
+                }
+                is ApiResult.Error -> {
+                    _avatarState.value = UiLoadState.Error(result.error.message, result.error.code)
+                }
+            }
+        }
+    }
+
+    /**
+     * Xóa ảnh đại diện hiện tại.
+     */
+    fun deleteAvatar() {
+        scope.launch {
+            _avatarState.value = UiLoadState.Loading
+            when (val result = authRepository.deleteAvatar()) {
+                is ApiResult.Success -> {
+                    _avatarState.value = UiLoadState.Success(Unit)
+                    loadProfile()
+                }
+                is ApiResult.Error -> {
+                    _avatarState.value = UiLoadState.Error(result.error.message, result.error.code)
+                }
+            }
+        }
+    }
+
+    fun resetAvatarState() {
+        _avatarState.value = UiLoadState.Idle
+    }
+
+    /**
+     * Tải blob avatar từ GET /api/profile/avatar (Bearer-authenticated).
+     * Kết quả lưu trong [avatarBytesState]; UI dùng BitmapFactory.decodeByteArray() để render.
+     * Chỉ gọi khi profile.avatarAvailable == true.
+     */
+    fun loadMyAvatarBytes(context: android.content.Context) {
+        scope.launch {
+            _avatarBytesState.value = UiLoadState.Loading
+            when (val result = authRepository.loadMyAvatarBytes(context)) {
+                is ApiResult.Success -> _avatarBytesState.value = UiLoadState.Success(result.data)
+                is ApiResult.Error -> _avatarBytesState.value = UiLoadState.Error(result.error.message)
+            }
+        }
+    }
+
+    fun resetAvatarBytesState() {
+        _avatarBytesState.value = UiLoadState.Idle
     }
 }

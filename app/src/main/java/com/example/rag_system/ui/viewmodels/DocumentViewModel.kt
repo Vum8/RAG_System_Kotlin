@@ -31,6 +31,10 @@ class DocumentViewModel(
         delegate.loadLibraryDocuments(search)
     }
 
+    fun loadMoreLibraryDocuments() {
+        delegate.loadLibraryDocuments(isLoadMore = true)
+    }
+
     fun getPageContent(page: Int) = delegate.getPageContent(page)
 
     fun getDocumentTitleById(docId: String) = delegate.getDocumentTitleById(docId)

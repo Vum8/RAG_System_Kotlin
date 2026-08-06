@@ -11,6 +11,13 @@ import com.example.rag_system.data.api.service.UserApiService
 import com.example.rag_system.data.config.AppConfig
 import com.example.rag_system.data.session.TokenManager
 import com.example.rag_system.ui.models.UserUiModel
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.InputStream
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.ByteArrayOutputStream
 
 /**
  * Repository kết nối với Backend EduRAG (RAG_Be) cho nghiệp vụ Xác thực và Hồ sơ Sinh viên.
@@ -23,7 +30,7 @@ class AuthRepository : BaseRepository() {
     /**
      * Đăng nhập tài khoản Sinh viên. Tự động lưu JWT Token.
      */
-    suspend fun login(email: String, password: String): ApiResult<UserUiModel> {
+    suspend fun login(email: String, password: String, rememberMe: Boolean = true): ApiResult<UserUiModel> {
 
 
         return safeApiCall(emitUnauthorizedEvent = false) {
@@ -37,7 +44,7 @@ class AuthRepository : BaseRepository() {
             
             val token = loginData?.token
             if (!token.isNullOrEmpty()) {
-                TokenManager.saveToken(token)
+                TokenManager.saveToken(token, rememberMe)
             }
             val userDto = loginData?.user
             UserUiModel(
@@ -86,7 +93,8 @@ class AuthRepository : BaseRepository() {
                 email = profileDto?.email ?: "",
                 studentId = profileDto?.studentCode ?: "",
                 phoneNumber = profileDto?.phone ?: "",
-                avatarUrl = null,
+                avatarUrl = profileDto?.avatarUrl,
+                hasAvatar = profileDto?.avatarAvailable == true,
                 isVerified = profileDto?.status == "ACTIVE"
             )
         }
@@ -145,9 +153,84 @@ class AuthRepository : BaseRepository() {
     }
 
     /**
+     * Upload hoặc thay thế ảnh đại diện.
+     * @param inputStream dữ liệu ảnh từ content URI
+     * @param mimeType MIME type của ảnh (image/jpeg, image/png, image/webp)
+     * @param filename tên file gốc để gửi lên server
+     */
+    suspend fun uploadAvatar(inputStream: InputStream, mimeType: String, filename: String): ApiResult<Unit> {
+        return safeApiCall {
+            val originalBytes = inputStream.readBytes()
+            var uploadBytes = originalBytes
+            var finalMimeType = mimeType
+
+            // Tự động nén ảnh nếu dung lượng lớn hơn 500KB
+            if (originalBytes.size > 500 * 1024) {
+                try {
+                    val bitmap = BitmapFactory.decodeByteArray(originalBytes, 0, originalBytes.size)
+                    if (bitmap != null) {
+                        val outputStream = ByteArrayOutputStream()
+                        // Tính toán scale giảm kích thước (max dimension = 800px)
+                        var scaledBitmap = bitmap
+                        val maxDim = 800
+                        if (bitmap.width > maxDim || bitmap.height > maxDim) {
+                            val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
+                            val width = if (ratio > 1) maxDim else (maxDim * ratio).toInt()
+                            val height = if (ratio > 1) (maxDim / ratio).toInt() else maxDim
+                            scaledBitmap = Bitmap.createScaledBitmap(bitmap, width, height, true)
+                        }
+                        
+                        // Ép nén chất lượng xuống 70% chuẩn JPEG
+                        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+                        val compressed = outputStream.toByteArray()
+                        
+                        if (compressed.size < originalBytes.size) {
+                            uploadBytes = compressed
+                            finalMimeType = "image/jpeg"
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Bỏ qua lỗi nén, sử dụng file gốc nếu nén thất bại
+                }
+            }
+
+            val requestBody = uploadBytes.toRequestBody(finalMimeType.toMediaTypeOrNull())
+            val part = MultipartBody.Part.createFormData("avatar", filename, requestBody)
+            userService.uploadAvatar(part)
+            Unit
+        }
+    }
+
+    /**
+     * Xóa ảnh đại diện.
+     */
+    suspend fun deleteAvatar(): ApiResult<Unit> {
+        return safeApiCall {
+            userService.deleteAvatar()
+            Unit
+        }
+    }
+
+    /**
+     * Tải blob ảnh đại diện của chính mình từ GET /api/profile/avatar.
+     * Trả về [ByteArray] để UI tạo Bitmap trực tiếp (không cần file tạm).
+     * Chỉ gọi khi [UserProfileResponseDto.avatarAvailable] == true.
+     */
+    suspend fun loadMyAvatarBytes(context: android.content.Context): ApiResult<ByteArray> {
+        return safeApiCall {
+            val bytes = userService.streamMyAvatar().bytes()
+            // Ghi ra file để persist qua các lần mở app
+            val file = java.io.File(context.filesDir, "avatar.jpg")
+            file.writeBytes(bytes)
+            com.example.rag_system.data.session.TokenManager.saveLocalAvatarUri(android.net.Uri.fromFile(file).toString())
+            bytes
+        }
+    }
+
+    /**
      * Đăng xuất, xóa token khỏi hệ thống.
      */
     fun logout() {
-        TokenManager.clearToken()
+        com.example.rag_system.data.session.TokenManager.clearToken()
     }
 }

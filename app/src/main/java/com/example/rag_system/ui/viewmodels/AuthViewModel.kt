@@ -26,9 +26,10 @@ class AuthViewModel(
     val registerState: StateFlow<UiLoadState<UserUiModel>> = delegate.registerState
     val forgotPasswordState: StateFlow<UiLoadState<Unit>> = delegate.forgotPasswordState
     val resetPasswordState: StateFlow<UiLoadState<Unit>> = delegate.resetPasswordState
+    val avatarState: StateFlow<UiLoadState<Unit>> = delegate.avatarState
 
-    fun login(email: String, pass: String) {
-        delegate.login(email, pass)
+    fun login(email: String, pass: String, rememberMe: Boolean = true) {
+        delegate.login(email, pass, rememberMe)
     }
 
     fun resetLoginState() {
@@ -59,8 +60,16 @@ class AuthViewModel(
         delegate.resetResetPasswordState()
     }
 
-    fun loadProfile() {
-        delegate.loadProfile()
+    fun resetAvatarState() {
+        delegate.resetAvatarState()
+    }
+
+    fun loadProfile(context: android.content.Context? = null) {
+        delegate.loadProfile(context)
+    }
+
+    fun uploadAvatar(inputStream: java.io.InputStream, mimeType: String, filename: String, context: android.content.Context) {
+        delegate.uploadAvatar(inputStream, mimeType, filename, context)
     }
 
     fun logout() {

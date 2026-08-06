@@ -12,6 +12,9 @@ object TokenManager {
     private const val KEY_JWT_TOKEN = "jwt_token"
     private const val KEY_LOCAL_AVATAR_URI = "local_avatar_uri"
 
+    private val _avatarUriFlow = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val avatarUriFlow: kotlinx.coroutines.flow.StateFlow<String?> = _avatarUriFlow
+
     private var sharedPreferences: SharedPreferences? = null
 
     /**
@@ -20,20 +23,29 @@ object TokenManager {
     fun init(context: Context) {
         if (sharedPreferences == null) {
             sharedPreferences = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            _avatarUriFlow.value = getLocalAvatarUri()
         }
     }
+
+    private var memoryToken: String? = null
 
     /**
      * Lưu trữ Token JWT sau khi đăng nhập thành công.
      */
-    fun saveToken(token: String?) {
-        sharedPreferences?.edit()?.apply {
-            if (token.isNullOrEmpty()) {
-                remove(KEY_JWT_TOKEN)
-            } else {
-                putString(KEY_JWT_TOKEN, token)
+    fun saveToken(token: String?, rememberMe: Boolean = true) {
+        if (rememberMe) {
+            sharedPreferences?.edit()?.apply {
+                if (token.isNullOrEmpty()) {
+                    remove(KEY_JWT_TOKEN)
+                } else {
+                    putString(KEY_JWT_TOKEN, token)
+                }
+                apply()
             }
-            apply()
+        } else {
+            memoryToken = token
+            // Ensure it's removed from persistent storage if rememberMe is false
+            sharedPreferences?.edit()?.remove(KEY_JWT_TOKEN)?.apply()
         }
     }
 
@@ -41,7 +53,7 @@ object TokenManager {
      * Lấy Token JWT hiện tại nếu có.
      */
     fun getToken(): String? {
-        return sharedPreferences?.getString(KEY_JWT_TOKEN, null)
+        return memoryToken ?: sharedPreferences?.getString(KEY_JWT_TOKEN, null)
     }
 
     /**
@@ -51,8 +63,11 @@ object TokenManager {
         sharedPreferences?.edit()?.apply {
             if (uri.isNullOrEmpty()) {
                 remove(KEY_LOCAL_AVATAR_URI)
+                _avatarUriFlow.value = null
             } else {
                 putString(KEY_LOCAL_AVATAR_URI, uri)
+                // Appending timestamp ensures Compose sees it as a new URI state if the file content changed but path is same.
+                _avatarUriFlow.value = uri + "?t=" + System.currentTimeMillis()
             }
             apply()
         }
@@ -69,6 +84,8 @@ object TokenManager {
      * Xóa Token khi đăng xuất hoặc khi nhận sự kiện 401 Unauthorized.
      */
     fun clearToken() {
-        saveToken(null)
+        memoryToken = null
+        saveToken(null, true)
+        saveLocalAvatarUri(null)
     }
 }

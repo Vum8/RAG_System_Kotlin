@@ -1,5 +1,6 @@
 package com.example.rag_system.data.api.model
 
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
 
 data class ChatSessionDto(
@@ -31,6 +32,8 @@ data class CitationDto(
     @SerializedName("pageNumber") val pageNumber: Int? = null,
     @SerializedName("sectionTitle") val sectionTitle: String? = null,
     @SerializedName("sourceText") val sourceText: String? = null,
+    /** Thường null cho đến khi Python tạo locator; FE dùng sourceText làm fallback. */
+    @SerializedName("sourceLocator") val sourceLocator: JsonElement? = null,
     @SerializedName("retrievalScore") val retrievalScore: Double? = null,
     @SerializedName("rerankScore") val rerankScore: Double? = null
 )

@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,7 @@ import com.example.rag_system.data.session.TokenManager
 fun LibraryScreen(
     libraryState: UiLoadState<List<DocumentUiModel>>,
     onReloadLibrary: (String) -> Unit,
+    onLoadMoreLibrary: () -> Unit = {},
     onDocumentClick: (String) -> Unit,
     onTabSelected: (String) -> Unit,
     onProfileClick: () -> Unit,
@@ -198,7 +200,19 @@ fun LibraryScreen(
                                 modifier = Modifier.align(Alignment.Center)
                             )
                         } else {
+                            val gridState = rememberLazyGridState()
+
+                            LaunchedEffect(gridState) {
+                                snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                                    .collect { lastIndex ->
+                                        if (lastIndex != null && lastIndex >= allDocs.size - 4) {
+                                            onLoadMoreLibrary()
+                                        }
+                                    }
+                            }
+
                             LazyVerticalGrid(
+                                state = gridState,
                                 columns = GridCells.Fixed(2),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
