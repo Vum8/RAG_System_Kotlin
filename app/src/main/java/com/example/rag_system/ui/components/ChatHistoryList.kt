@@ -3,6 +3,7 @@ package com.example.rag_system.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,9 +30,20 @@ fun ChatHistoryList(
     onDeleteSession: (ChatSessionUiModel) -> Unit,
     onDeleteAll: () -> Unit,
     onNewChatClick: () -> Unit,
+    onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteAllDialog by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState, sessions.size) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastIndex ->
+                if (lastIndex != null && sessions.isNotEmpty() && lastIndex >= sessions.size - 2) {
+                    onLoadMore()
+                }
+            }
+    }
  
     if (showDeleteAllDialog) {
         DeleteAllConfirmDialog(
@@ -90,6 +102,7 @@ fun ChatHistoryList(
             ChatHistoryEmptyState()
         } else {
             LazyColumn(
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 modifier = Modifier.fillMaxSize()

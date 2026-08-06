@@ -61,6 +61,12 @@ fun MainTabScreen(
                         currentTab = selectedTab
                     },
                     onProfileClick = onProfileClick,
+                    onLoadMoreMessages = {
+                        val sessionId = chatViewModel.currentSessionId
+                        if (sessionId != null && sessionId > 0L) {
+                            chatViewModel.loadSessionMessages(sessionId, isLoadMore = true)
+                        }
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -113,6 +119,9 @@ fun MainTabScreen(
                         } else {
                             callback(true)
                         }
+                    },
+                    onLoadMore = {
+                        chatViewModel.loadChatHistory(isLoadMore = true)
                     },
                     modifier = Modifier.fillMaxSize()
                 )

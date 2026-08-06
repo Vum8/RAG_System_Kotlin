@@ -38,17 +38,19 @@ class ChatViewModel(
         draftInputText = text
     }
 
+    val currentSessionId: Long?
+        get() = chatRepository.currentSessionId
 
     init {
         loadChatHistory()
     }
 
-    fun loadChatHistory() {
-        delegate.loadChatHistory()
+    fun loadChatHistory(isLoadMore: Boolean = false) {
+        delegate.loadChatHistory(isLoadMore)
     }
 
-    fun loadSessionMessages(sessionId: Long) {
-        delegate.loadSessionMessages(sessionId)
+    fun loadSessionMessages(sessionId: Long, isLoadMore: Boolean = false) {
+        delegate.loadSessionMessages(sessionId, isLoadMore)
     }
 
     fun startNewSession() {

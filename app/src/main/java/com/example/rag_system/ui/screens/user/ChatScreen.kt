@@ -57,6 +57,7 @@ fun ChatScreen(
     onSourceClick: (SourceCitationUiModel) -> Unit,
     onTabSelected: (String) -> Unit,
     onProfileClick: () -> Unit,
+    onLoadMoreMessages: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -79,7 +80,10 @@ fun ChatScreen(
     LaunchedEffect(currentChatState) {
         if (currentChatState is UiLoadState.Success) {
             val aiResponse = currentChatState.data
-            if (activeMessages.none { it.id == aiResponse.id }) {
+            val existingIndex = activeMessages.indexOfFirst { it.id == aiResponse.id }
+            if (existingIndex != -1) {
+                activeMessages[existingIndex] = aiResponse
+            } else {
                 activeMessages.add(aiResponse)
             }
         }
@@ -97,6 +101,18 @@ fun ChatScreen(
         if (activeMessages.isNotEmpty() || currentChatState is UiLoadState.Loading) {
             listState.animateScrollToItem(index = Int.MAX_VALUE)
         }
+    }
+
+    // Trigger tải thêm tin nhắn khi cuộn gần cuối danh sách
+    LaunchedEffect(listState, activeMessages.size) {
+        snapshotFlow { listState.layoutInfo }
+            .collect { layoutInfo ->
+                val lastIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                val totalItems = layoutInfo.totalItemsCount
+                if (lastIndex != null && activeMessages.isNotEmpty() && totalItems > 0 && lastIndex >= totalItems - 2) {
+                    onLoadMoreMessages()
+                }
+            }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -240,7 +256,10 @@ fun ChatScreen(
                 }
 
                 // 3. Danh sách toàn bộ tin nhắn (User và AI) trong phiên chat hiện tại
-                items(activeMessages) { message ->
+                items(
+                    items = activeMessages,
+                    key = { message -> message.id }
+                ) { message ->
                     if (message.isFromUser) {
                         EduUserMessageBubble(
                             content = message.content
@@ -312,7 +331,8 @@ fun EduRAGPreview() {
             onBackClick = {},
             onSourceClick = {},
             onTabSelected = {},
-            onProfileClick = {}
+            onProfileClick = {},
+            onLoadMoreMessages = {}
         )
     }
 }

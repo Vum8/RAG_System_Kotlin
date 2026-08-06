@@ -30,10 +30,10 @@ class ChatRepository : BaseRepository() {
     /**
      * Lấy danh sách lịch sử các phiên hội thoại RAG từ Backend hoặc Mock.
      */
-    suspend fun getChatHistory(): ApiResult<List<ChatSessionUiModel>> {
+    suspend fun getChatHistory(offset: Int = 0, limit: Int = 20): ApiResult<List<ChatSessionUiModel>> {
 
         return safeApiCall {
-            val response = chatService.listSessions(offset = 0, limit = 50)
+            val response = chatService.listSessions(offset = offset, limit = limit)
             val sessionDtos = response.data?.sessions ?: emptyList()
             sessionDtos.map { dto ->
                 ChatSessionUiModel(
@@ -101,12 +101,12 @@ class ChatRepository : BaseRepository() {
     /**
      * Lấy toàn bộ danh sách tin nhắn của một phiên chat cụ thể từ Backend hoặc Mock.
      */
-    suspend fun getSessionMessages(sessionId: Long): ApiResult<List<MessageUiModel>> {
+    suspend fun getSessionMessages(sessionId: Long, offset: Int = 0, limit: Int = 50): ApiResult<List<MessageUiModel>> {
 
 
         return safeApiCall {
             currentSessionId = sessionId
-            val response = chatService.getHistory(sessionId = sessionId, offset = 0, limit = 100)
+            val response = chatService.getHistory(sessionId = sessionId, offset = offset, limit = limit)
             val msgDtos = response.data?.messages ?: emptyList()
             msgDtos.map { dto ->
                 val citationsList = dto.citations.map { c ->

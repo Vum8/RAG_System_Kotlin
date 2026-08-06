@@ -34,6 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.TextView
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.latex.JLatexMathPlugin
+import io.noties.markwon.ext.tables.TablePlugin
 import com.example.rag_system.ui.models.SourceCitationUiModel
 import com.example.rag_system.ui.theme.*
 
@@ -148,104 +153,46 @@ fun EduAiDetailedResponse(
         content
     }
 
-    // Sinh bộ InlineTextContent động dựa trên citationOrder thực tế
-    val inlineContentMap = remember(citations) {
-        citations.associate { citation ->
-            "pin_${citation.citationOrder}" to InlineTextContent(
-                Placeholder(
-                    width = 24.sp,
-                    height = 24.sp,
-                    placeholderVerticalAlign = PlaceholderVerticalAlign.Center
-                )
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE2E8F0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${citation.citationOrder}",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF464555)
-                        )
-                    }
-                }
-            }
+    // Chuẩn bị Text để hiển thị
+    val responseText = remember(activeContent, citations) {
+        var text = activeContent
+        // Tự động biến các thẻ [1], [2] thành dạng in đậm để dễ nhìn (nếu muốn làm clickable link thì có thể thay bằng cấu trúc Markdown link)
+        val citationRegex = Regex("\\[([\\\\d,\\\\s]+)\\]")
+        text = text.replace(citationRegex) { matchResult ->
+            "**${matchResult.value}**"
         }
+        text
     }
 
-    // Tự động phân tách và chèn các pin số vào AnnotatedString
-    // Định dạng các gạch đầu dòng danh sách (* hoặc -) thành dấu • đẹp mắt
-    val formattedContent = remember(activeContent) {
-        activeContent.lines().joinToString("\n") { line ->
-            val trimmed = line.trimStart()
-            if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
-                val prefix = line.substring(0, line.indexOf(trimmed))
-                prefix + "• " + trimmed.substring(2)
-            } else {
-                line
-            }
-        }
-    }
-
-    // Tự động phân tách, in đậm các chữ nằm giữa ** và chèn các pin số vào AnnotatedString
-    val responseText = remember(formattedContent, citations) {
-        buildAnnotatedString {
-            // Tách theo dấu ** để xác định phần chữ in đậm (bold) và chữ thường
-            val boldParts = formattedContent.split("**")
-            
-            boldParts.forEachIndexed { partIndex, part ->
-                val isBold = partIndex % 2 != 0
-                val style = if (isBold) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle()
-                
-                withStyle(style) {
-                    // Regex nâng cấp hỗ trợ gộp, ví dụ: [1], [1, 2], [1,2,3]
-                    val citationRegex = Regex("\\[([\\\\d,\\\\s]+)\\]")
-                    val matches = citationRegex.findAll(part).toList()
-                    val textSegments = part.split(citationRegex)
-                    
-                    textSegments.forEachIndexed { segmentIndex, segment ->
-                        append(segment)
-                        if (segmentIndex < matches.size) {
-                            val numbersStr = matches[segmentIndex].groupValues[1]
-                            val numbers = numbersStr.split(",").mapNotNull { it.trim().toIntOrNull() }
-                            
-                            if (numbers.isNotEmpty()) {
-                                numbers.forEachIndexed { numIdx, num ->
-                                    if (citations.any { it.citationOrder == num }) {
-                                        appendInlineContent("pin_$num", "[$num]")
-                                    } else {
-                                        append("[$num]")
-                                    }
-                                    if (numIdx < numbers.size - 1) append(" ")
-                                }
-                            } else {
-                                append("[$numbersStr]")
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    val context = LocalContext.current
+    val markwon = remember {
+        Markwon.builder(context)
+            .usePlugin(JLatexMathPlugin.create(context.resources.displayMetrics.scaledDensity * 14f)) // 14sp equivalent for math
+            .usePlugin(TablePlugin.create(context))
+            .build()
     }
 
     Row(modifier = modifier.fillMaxWidth()) {
         EduAiAvatar()
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            // Text phản hồi
-            Text(
-                text = responseText,
-                inlineContent = inlineContentMap,
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
-                color = BrandTextPrimary
+            // Text phản hồi dùng AndroidView bọc TextView với thư viện Markwon
+            AndroidView(
+                factory = { ctx ->
+                    TextView(ctx).apply {
+                        layoutParams = android.view.ViewGroup.LayoutParams(
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                        setTextColor(android.graphics.Color.parseColor("#1F1F1F")) // BrandTextPrimary equivalent
+                        textSize = 15f
+                        setLineSpacing(0f, 1.3f)
+                    }
+                },
+                update = { textView ->
+                    markwon.setMarkdown(textView, responseText)
+                },
+                modifier = Modifier.fillMaxWidth()
             )
 
             if (showTextToggle) {

@@ -39,6 +39,7 @@ fun HistoryScreen(
     onProfileClick: () -> Unit,
     onDeleteSession: (String, (Boolean) -> Unit) -> Unit,
     onDeleteAll: ((Boolean) -> Unit) -> Unit,
+    onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -134,6 +135,7 @@ fun HistoryScreen(
                         onNewChatClick()
                         onTabSelected("chat")
                     },
+                    onLoadMore = onLoadMore,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
