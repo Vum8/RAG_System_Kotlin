@@ -27,10 +27,9 @@ import com.example.rag_system.ui.theme.*
 @Composable
 fun DocumentCard(
     title: String,
-    categoryLabel: String,
     infoText: String,
     bannerColor: Color,
-    iconEmoji: String,
+    fileFormat: String,
     onViewClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -51,30 +50,20 @@ fun DocumentCard(
                     .background(bannerColor)
                     .padding(12.dp)
             ) {
-                // Nhãn phân loại (Ví dụ: "Chương 1")
+                // Đã gỡ bỏ nhãn phân loại hardcode "Tài liệu học tập" vô nghĩa.
+
+                // Biểu tượng loại tài liệu ở giữa, thiết kế giống logo app thật (Word, PDF)
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.8f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .fillMaxSize()
+                        .padding(top = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = categoryLabel,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = BrandPrimary
+                    FileFormatIcon(
+                        format = fileFormat,
+                        modifier = Modifier.size(48.dp)
                     )
                 }
-
-                // Biểu tượng mờ bên góc
-                Text(
-                    text = iconEmoji,
-                    fontSize = 44.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 2.dp, end = 2.dp)
-                        .alpha(0.2f)
-                )
             }
 
             // Phần dưới: Tiêu đề tài liệu, mô tả số trang và liên kết xem

@@ -25,11 +25,21 @@ import com.example.rag_system.ui.components.UserAvatarButton
 import com.example.rag_system.ui.models.ChatSessionUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 
 /**
  * Màn hình Lịch sử Chat - Scaffold khung lắp ghép các component theo MVVM Stateless.
  * Nhận toàn bộ dữ liệu từ bên ngoài, không chứa logic nghiệp vụ.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     chatHistoryState: UiLoadState<List<ChatSessionUiModel>>,
@@ -40,8 +50,13 @@ fun HistoryScreen(
     onDeleteSession: (String, (Boolean) -> Unit) -> Unit,
     onDeleteAll: ((Boolean) -> Unit) -> Unit,
     onLoadMore: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullToRefreshState()
+
     val context = LocalContext.current
     val toastManager = LocalToastManager.current
 
@@ -92,7 +107,22 @@ fun HistoryScreen(
             )
         }
     ) { innerPadding ->
-        when (chatHistoryState) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    isRefreshing = true
+                    onRefresh()
+                    delay(600)
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when (chatHistoryState) {
             is UiLoadState.Loading -> {
                 Box(
                     modifier = Modifier
@@ -138,9 +168,9 @@ fun HistoryScreen(
                     onLoadMore = onLoadMore,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
                 )
             }
-        }
-    }
+        } // Đóng when
+        } // Đóng PullToRefreshBox
+    } // Đóng Scaffold
 }

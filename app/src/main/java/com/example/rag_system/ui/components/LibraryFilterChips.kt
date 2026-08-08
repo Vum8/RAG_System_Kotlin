@@ -16,6 +16,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.example.rag_system.ui.theme.*
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 /** Mapping hiển thị (label) → giá trị API (fileType param). */
 data class LibraryFilter(val label: String, val apiValue: String?)
 
@@ -34,86 +44,95 @@ private val SORT_OPTIONS = listOf(
 )
 
 /**
- * Thanh hàng ngang chọn bộ lọc theo loại file tài liệu thư viện (Stateless UI).
- * [selectedFilter]: giá trị API hiện tại (null = Tất cả, "PDF", "DOCX", "TXT").
- * [onFilterSelected]: callback trả về giá trị API (null hoặc string).
+ * Thanh hàng ngang gộp chung Bộ lọc và Sắp xếp dùng DropdownMenu để gọn gàng.
  */
 @Composable
-fun LibraryFilterChips(
+fun LibraryFilterAndSortRow(
     selectedFilter: String?,
     onFilterSelected: (String?) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
-    ) {
-        items(FILE_TYPE_FILTERS) { filter ->
-            val isSelected = filter.apiValue == selectedFilter
-            FilterChipItem(
-                label = filter.label,
-                isSelected = isSelected,
-                onClick = { onFilterSelected(filter.apiValue) }
-            )
-        }
-    }
-}
-
-/**
- * Thanh hàng ngang chọn sắp xếp tài liệu thư viện (Stateless UI).
- * [selectedSort]: giá trị sort API hiện tại (mặc định "newest").
- * [onSortSelected]: callback trả về giá trị sort API.
- */
-@Composable
-fun LibrarySortChips(
     selectedSort: String,
     onSortSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyRow(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(SORT_OPTIONS) { option ->
-            val isSelected = option.apiValue == selectedSort
-            FilterChipItem(
-                label = option.label,
-                isSelected = isSelected,
-                onClick = { option.apiValue?.let { onSortSelected(it) } }
-            )
-        }
+        // Bộ lọc Loại file
+        val currentFilterLabel = FILE_TYPE_FILTERS.find { it.apiValue == selectedFilter }?.label ?: "Tất cả"
+        DropdownSelector(
+            label = "Loại: $currentFilterLabel",
+            options = FILE_TYPE_FILTERS,
+            onOptionSelected = { onFilterSelected(it.apiValue) },
+            modifier = Modifier.weight(1f)
+        )
+
+        // Bộ lọc Sắp xếp
+        val currentSortLabel = SORT_OPTIONS.find { it.apiValue == selectedSort }?.label ?: "Mới nhất"
+        DropdownSelector(
+            label = "Sắp xếp: $currentSortLabel",
+            options = SORT_OPTIONS,
+            onOptionSelected = { it.apiValue?.let { v -> onSortSelected(v) } },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
 @Composable
-private fun FilterChipItem(
+private fun DropdownSelector(
     label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
+    options: List<LibraryFilter>,
+    onOptionSelected: (LibraryFilter) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) BrandPrimaryContainer else BrandSurface)
-            .border(
-                width = 1.dp,
-                color = if (isSelected) BrandPrimary.copy(alpha = 0.6f) else BrandBorderSubtle,
-                shape = RoundedCornerShape(20.dp)
-            )
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 7.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isSelected) BrandOnPrimary else BrandOnSurfaceVariant
-        )
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(BrandSurface)
+                .border(1.dp, BrandBorderSubtle, RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = BrandOnSurfaceVariant,
+                    maxLines = 1
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = BrandOnSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
+

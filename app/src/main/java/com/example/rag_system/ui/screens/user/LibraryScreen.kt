@@ -25,6 +25,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.material3.ExperimentalMaterial3Api
 import com.example.rag_system.ui.components.*
 import com.example.rag_system.ui.models.DocumentFileFormat
 import com.example.rag_system.ui.models.DocumentUiModel
@@ -37,6 +42,7 @@ import com.example.rag_system.ui.theme.*
  *
  * [onReloadLibrary]: callback (search, fileType, sort) → trigger tải lại từ ViewModel.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     libraryState: UiLoadState<List<DocumentUiModel>>,
@@ -49,11 +55,22 @@ fun LibraryScreen(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     var searchQuery   by rememberSaveable { mutableStateOf("") }
     var selectedType  by rememberSaveable { mutableStateOf<String?>(null) }   // null = Tất cả
     var selectedSort  by rememberSaveable { mutableStateOf("newest") }
     var isFirstLoad   by remember { mutableStateOf(true) }
+
+    var cachedDocs by remember { mutableStateOf<List<DocumentUiModel>>(emptyList()) }
+    LaunchedEffect(libraryState) {
+        if (libraryState is UiLoadState.Success) {
+            cachedDocs = libraryState.data
+        }
+    }
 
     // ── Auto-trigger reload khi bất kỳ filter nào thay đổi ──
     LaunchedEffect(searchQuery, selectedType, selectedSort) {
@@ -147,30 +164,77 @@ fun LibraryScreen(
                 )
             )
 
-            // ── Filter theo loại file ──
-            LibraryFilterChips(
+            // ── Filter và Sort gộp chung bằng DropdownMenu ──
+            LibraryFilterAndSortRow(
                 selectedFilter = selectedType,
-                onFilterSelected = { newType ->
-                    selectedType = newType
-                }
-            )
-
-            // ── Sort sắp xếp ──
-            LibrarySortChips(
+                onFilterSelected = { newType -> selectedType = newType },
                 selectedSort = selectedSort,
-                onSortSelected = { newSort ->
-                    selectedSort = newSort
-                }
+                onSortSelected = { newSort -> selectedSort = newSort }
             )
 
             // ── Nội dung danh sách ──
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    coroutineScope.launch {
+                        isRefreshing = true
+                        onReloadLibrary(searchQuery, selectedType, selectedSort)
+                        delay(600)
+                        isRefreshing = false
+                    }
+                },
+                state = pullRefreshState,
+                modifier = Modifier.fillMaxSize().weight(1f)
             ) {
                 when (libraryState) {
-                    is UiLoadState.Loading, is UiLoadState.Idle -> {
+                    is UiLoadState.Loading -> {
+                        if (cachedDocs.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = BrandPrimary)
+                            }
+                        } else {
+                            val gridState = rememberLazyGridState()
+                            LazyVerticalGrid(
+                                state = gridState,
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(cachedDocs, key = { it.id }) { document ->
+                                    val (color, formatString) = when (document.fileFormat) {
+                                        DocumentFileFormat.PDF   -> Color(0xFFFEE2E2) to "PDF" // Đỏ nhạt cho PDF
+                                        DocumentFileFormat.SLIDE -> Color(0xFFFEF3C7) to "SLIDE" // Vàng cho Slide
+                                        DocumentFileFormat.WORD  -> Color(0xFFDBEAFE) to "WORD" // Xanh dương cho Word
+                                        else                     -> Color(0xFFF3F4F6) to "TXT" // Xám cho Text
+                                    }
+
+                                    val pageText = if (document.pageOrSlideCount > 0) {
+                                        "${document.pageOrSlideCount} trang"
+                                    } else ""
+                                    
+                                    val sizeText = document.fileSizeText
+                                    val detailText = when {
+                                        pageText.isNotEmpty() && sizeText.isNotEmpty() -> "$pageText • $sizeText"
+                                        else -> pageText.ifEmpty { sizeText }
+                                    }
+
+                                    DocumentCard(
+                                        title = document.title,
+                                        infoText = detailText,
+                                        bannerColor = color,
+                                        fileFormat = formatString,
+                                        onViewClick = { onDocumentClick(document.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    is UiLoadState.Idle -> {
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center),
                             color = BrandPrimary
@@ -245,16 +309,17 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(allDocs, key = { it.id }) { document ->
-                                    val (color, emoji) = when (document.fileFormat) {
-                                        DocumentFileFormat.PDF   -> Color(0xFFDCFCE7) to "🐍"
-                                        DocumentFileFormat.SLIDE -> Color(0xFFE0F2FE) to "📁"
-                                        DocumentFileFormat.WORD  -> Color(0xFFF3E8FF) to "📝"
-                                        else                     -> Color(0xFFFEF3C7) to "🗄️"
+                                    val (color, formatString) = when (document.fileFormat) {
+                                        DocumentFileFormat.PDF   -> Color(0xFFFEE2E2) to "PDF" // Đỏ nhạt cho PDF
+                                        DocumentFileFormat.SLIDE -> Color(0xFFFEF3C7) to "SLIDE" // Vàng cho Slide
+                                        DocumentFileFormat.WORD  -> Color(0xFFDBEAFE) to "WORD" // Xanh dương cho Word
+                                        else                     -> Color(0xFFF3F4F6) to "TXT" // Xám cho Text
                                     }
 
                                     val pageText = if (document.pageOrSlideCount > 0) {
                                         "${document.pageOrSlideCount} trang"
                                     } else ""
+                                    
                                     val sizeText = document.fileSizeText
                                     val detailText = when {
                                         pageText.isNotEmpty() && sizeText.isNotEmpty() -> "$pageText • $sizeText"
@@ -263,10 +328,9 @@ fun LibraryScreen(
 
                                     DocumentCard(
                                         title = document.title,
-                                        categoryLabel = document.category,
                                         infoText = detailText,
                                         bannerColor = color,
-                                        iconEmoji = emoji,
+                                        fileFormat = formatString,
                                         onViewClick = { onDocumentClick(document.id) }
                                     )
                                 }
@@ -274,7 +338,7 @@ fun LibraryScreen(
                         }
                     }
                 }
-            }
+            } // Đóng PullToRefreshBox
         }
     }
 }

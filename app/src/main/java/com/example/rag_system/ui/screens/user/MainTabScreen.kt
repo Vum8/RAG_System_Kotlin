@@ -123,6 +123,9 @@ fun MainTabScreen(
                     onLoadMore = {
                         chatViewModel.loadChatHistory(isLoadMore = true)
                     },
+                    onRefresh = {
+                        chatViewModel.loadChatHistory()
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }

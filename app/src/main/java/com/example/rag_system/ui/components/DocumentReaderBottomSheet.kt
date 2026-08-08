@@ -142,7 +142,7 @@ fun DocumentReaderBottomSheet(
                                 maxLines = 1
                              )
                             Text(
-                                text = "Trang $currentPage • Tài liệu học tập",
+                                text = "Trang $currentPage",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = BrandTextSecondary
                             )

@@ -37,6 +37,10 @@ import com.example.rag_system.ui.models.MessageUiModel
 import com.example.rag_system.ui.models.SourceCitationUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 /**
@@ -62,6 +66,10 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
     var showAppInfo by rememberSaveable { mutableStateOf(false) }
+    
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     // Danh sách toàn bộ tin nhắn (User và AI) trong phiên chat hiện tại
     val activeMessages = remember { mutableStateListOf<MessageUiModel>() }
@@ -221,16 +229,31 @@ fun ChatScreen(
                 .fillMaxSize()
                 .blur(if (activeDocumentCitation != null) 4.dp else 0.dp) // Làm mờ khi mở tài liệu
         ) { innerPadding ->
-            LazyColumn(
-                state = listState,
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    coroutineScope.launch {
+                        isRefreshing = true
+                        onNewChatClick()
+                        activeMessages.clear()
+                        delay(600)
+                        isRefreshing = false
+                    }
+                },
+                state = pullRefreshState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .background(BrandSurface)
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(BrandSurface)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
                 // 1. AI Welcome Message
                 item {
                     EduAiWelcomeMessage()
@@ -295,8 +318,9 @@ fun ChatScreen(
                         )
                     }
                 }
-            }
-        }
+            } // Đóng LazyColumn
+            } // Đóng PullToRefreshBox
+        } // Đóng Scaffold
 
         // --- 2. Lớp phủ tối mờ Backdrop và Bottom Sheet Xem tài liệu ---
         if (activeDocumentCitation != null) {
