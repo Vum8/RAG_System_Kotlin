@@ -259,25 +259,7 @@ fun ChatScreen(
                     EduAiWelcomeMessage()
                 }
 
-                // 2. Nếu chưa có tin nhắn nào trong phiên hiện tại, hiển thị tóm tắt phiên gần nhất từ lịch sử
-                if (activeMessages.isEmpty() && chatHistoryState is UiLoadState.Success) {
-                    chatHistoryState.data.take(2).forEach { session ->
-                        item {
-                            EduUserMessageBubble(content = "Cho tôi hỏi về môn ${session.subjectLabel ?: "học"}: ${session.title}")
-                        }
-                        item {
-                            EduAiDetailedResponse(
-                                content = session.lastMessagePreview,
-                                citations = session.citations,
-                                noAnswer = false,
-                                onSourceClick = { citation ->
-                                    activeDocumentCitation = citation
-                                    onSourceClick(citation)
-                                }
-                            )
-                        }
-                    }
-                }
+                // Đã gỡ bỏ logic hiển thị tóm tắt phiên gần nhất để có khung chat mới hoàn toàn.
 
                 // 3. Danh sách toàn bộ tin nhắn (User và AI) trong phiên chat hiện tại
                 items(
