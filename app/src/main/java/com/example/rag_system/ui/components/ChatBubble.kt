@@ -157,8 +157,15 @@ fun EduAiDetailedResponse(
     // Chuẩn bị Text để hiển thị
     val responseText = remember(activeContent, citations) {
         var text = activeContent
-        // Tự động biến các thẻ [1], [2] thành dạng in đậm để dễ nhìn (nếu muốn làm clickable link thì có thể thay bằng cấu trúc Markdown link)
-        val citationRegex = Regex("\\[([\\\\d,\\\\s]+)\\]")
+        
+        // Tự động biến công thức toán học $...$ thành $$...$$ để Markwon xử lý đúng
+        val mathRegex = Regex("(?<!\\$)\\$(?!\\$)(.*?)(?<!\\$)\\$(?!\\$)")
+        text = text.replace(mathRegex) { match ->
+            "$$${match.groupValues[1]}$$"
+        }
+        
+        // Tự động biến các thẻ [1], [2] thành dòng in đậm để dễ nhìn (nếu muốn làm clickable link thì có thể thay bằng cấu trúc Markdown link)
+        val citationRegex = Regex("\\[([\\d,\\s]+)\\]")
         text = text.replace(citationRegex) { matchResult ->
             "**${matchResult.value}**"
         }
@@ -168,7 +175,9 @@ fun EduAiDetailedResponse(
     val context = LocalContext.current
     val markwon = remember {
         Markwon.builder(context)
-            .usePlugin(JLatexMathPlugin.create(context.resources.displayMetrics.scaledDensity * 14f)) // 14sp equivalent for math
+            .usePlugin(JLatexMathPlugin.create(context.resources.displayMetrics.scaledDensity * 14f) { builder ->
+                builder.inlinesEnabled(true)
+            })
             .usePlugin(TablePlugin.create(context))
             .build()
     }
