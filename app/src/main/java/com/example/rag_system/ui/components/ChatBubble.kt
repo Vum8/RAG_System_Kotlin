@@ -177,7 +177,7 @@ fun EduAiDetailedResponse(
     val markwon = remember {
         Markwon.builder(context)
             .usePlugin(MarkwonInlineParserPlugin.create())
-            .usePlugin(JLatexMathPlugin.create(context.resources.displayMetrics.scaledDensity * 14f) { builder ->
+            .usePlugin(JLatexMathPlugin.create(context.resources.displayMetrics.scaledDensity * 16f) { builder ->
                 builder.inlinesEnabled(true)
             })
             .usePlugin(TablePlugin.create(context))
