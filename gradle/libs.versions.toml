@@ -35,6 +35,7 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
 markwon-ext-latex = { group = "io.noties.markwon", name = "ext-latex", version.ref = "markwon" }
 markwon-ext-tables = { group = "io.noties.markwon", name = "ext-tables", version.ref = "markwon" }
+markwon-inlineparser = { group = "io.noties.markwon", name = "inline-parser", version.ref = "markwon" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

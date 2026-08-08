@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.latex)
     implementation(libs.markwon.ext.tables)
+    implementation(libs.markwon.inlineparser)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

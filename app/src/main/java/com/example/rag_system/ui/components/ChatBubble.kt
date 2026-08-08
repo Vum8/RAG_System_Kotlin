@@ -39,6 +39,7 @@ import android.widget.TextView
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 import com.example.rag_system.ui.models.SourceCitationUiModel
 import com.example.rag_system.ui.theme.*
 
@@ -175,6 +176,7 @@ fun EduAiDetailedResponse(
     val context = LocalContext.current
     val markwon = remember {
         Markwon.builder(context)
+            .usePlugin(MarkwonInlineParserPlugin.create())
             .usePlugin(JLatexMathPlugin.create(context.resources.displayMetrics.scaledDensity * 14f) { builder ->
                 builder.inlinesEnabled(true)
             })
