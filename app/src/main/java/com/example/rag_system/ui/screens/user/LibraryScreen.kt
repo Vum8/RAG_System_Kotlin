@@ -1,7 +1,5 @@
 package com.example.rag_system.ui.screens.user
 
-import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,23 +30,17 @@ import com.example.rag_system.ui.models.DocumentFileFormat
 import com.example.rag_system.ui.models.DocumentUiModel
 import com.example.rag_system.ui.state.UiLoadState
 import com.example.rag_system.ui.theme.*
-import android.net.Uri
-import android.graphics.ImageDecoder
-import android.os.Build
-import android.provider.MediaStore
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import com.example.rag_system.data.session.TokenManager
 
 /**
  * Màn hình Thư viện tài liệu (LibraryScreen) hiển thị danh sách tài liệu học tập từ Backend EduRAG.
  * Tuân thủ tuyệt đối Stateless UI: nhận [libraryState] từ bên ngoài và hiển thị theo trạng thái thực tế.
+ *
+ * [onReloadLibrary]: callback (search, fileType, sort) → trigger tải lại từ ViewModel.
  */
 @Composable
 fun LibraryScreen(
     libraryState: UiLoadState<List<DocumentUiModel>>,
-    onReloadLibrary: (String) -> Unit,
+    onReloadLibrary: (search: String, fileType: String?, sort: String) -> Unit,
     onLoadMoreLibrary: () -> Unit = {},
     onDocumentClick: (String) -> Unit,
     onTabSelected: (String) -> Unit,
@@ -58,18 +50,24 @@ fun LibraryScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
+    var searchQuery   by rememberSaveable { mutableStateOf("") }
+    var selectedType  by rememberSaveable { mutableStateOf<String?>(null) }   // null = Tất cả
+    var selectedSort  by rememberSaveable { mutableStateOf("newest") }
+    var isFirstLoad   by remember { mutableStateOf(true) }
 
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    var isFirstLoad by remember { mutableStateOf(true) }
-
-    LaunchedEffect(searchQuery) {
+    // ── Auto-trigger reload khi bất kỳ filter nào thay đổi ──
+    LaunchedEffect(searchQuery, selectedType, selectedSort) {
         if (isFirstLoad) {
             isFirstLoad = false
-            onReloadLibrary(searchQuery)
+            onReloadLibrary(searchQuery, selectedType, selectedSort)
         } else {
-            // Debounce 500ms để tránh gọi API liên tục khi gõ
-            kotlinx.coroutines.delay(500)
-            onReloadLibrary(searchQuery)
+            // Debounce 400ms cho search, tức thì cho filter/sort
+            if (selectedType != null || selectedSort != "newest") {
+                onReloadLibrary(searchQuery, selectedType, selectedSort)
+            } else {
+                kotlinx.coroutines.delay(400)
+                onReloadLibrary(searchQuery, selectedType, selectedSort)
+            }
         }
     }
 
@@ -116,6 +114,7 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // ── Thanh tìm kiếm ──
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -148,6 +147,23 @@ fun LibraryScreen(
                 )
             )
 
+            // ── Filter theo loại file ──
+            LibraryFilterChips(
+                selectedFilter = selectedType,
+                onFilterSelected = { newType ->
+                    selectedType = newType
+                }
+            )
+
+            // ── Sort sắp xếp ──
+            LibrarySortChips(
+                selectedSort = selectedSort,
+                onSortSelected = { newSort ->
+                    selectedSort = newSort
+                }
+            )
+
+            // ── Nội dung danh sách ──
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -173,7 +189,9 @@ fun LibraryScreen(
                                 color = BrandErrorDestructive,
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                            EduRAGButton(text = "Thử lại", onClick = { onReloadLibrary(searchQuery) })
+                            EduRAGButton(text = "Thử lại", onClick = {
+                                onReloadLibrary(searchQuery, selectedType, selectedSort)
+                            })
                         }
                     }
                     is UiLoadState.Empty -> {
@@ -194,11 +212,18 @@ fun LibraryScreen(
                         val allDocs = libraryState.data
 
                         if (allDocs.isEmpty()) {
-                            Text(
-                                text = "Không tìm thấy tài liệu phù hợp.",
-                                color = BrandTextSecondary,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "🔍", fontSize = 40.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Không tìm thấy tài liệu phù hợp.",
+                                    color = BrandTextSecondary,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         } else {
                             val gridState = rememberLazyGridState()
 
@@ -221,22 +246,19 @@ fun LibraryScreen(
                             ) {
                                 items(allDocs, key = { it.id }) { document ->
                                     val (color, emoji) = when (document.fileFormat) {
-                                        DocumentFileFormat.PDF -> Color(0xFFDCFCE7) to "🐍"
+                                        DocumentFileFormat.PDF   -> Color(0xFFDCFCE7) to "🐍"
                                         DocumentFileFormat.SLIDE -> Color(0xFFE0F2FE) to "📁"
-                                        DocumentFileFormat.WORD -> Color(0xFFF3E8FF) to "📝"
-                                        else -> Color(0xFFFEF3C7) to "🗄️"
+                                        DocumentFileFormat.WORD  -> Color(0xFFF3E8FF) to "📝"
+                                        else                     -> Color(0xFFFEF3C7) to "🗄️"
                                     }
 
                                     val pageText = if (document.pageOrSlideCount > 0) {
                                         "${document.pageOrSlideCount} trang"
-                                    } else {
-                                        ""
-                                    }
+                                    } else ""
                                     val sizeText = document.fileSizeText
-                                    val detailText = if (pageText.isNotEmpty() && sizeText.isNotEmpty()) {
-                                        "$pageText • $sizeText"
-                                    } else {
-                                        pageText.ifEmpty { sizeText }
+                                    val detailText = when {
+                                        pageText.isNotEmpty() && sizeText.isNotEmpty() -> "$pageText • $sizeText"
+                                        else -> pageText.ifEmpty { sizeText }
                                     }
 
                                     DocumentCard(
@@ -245,9 +267,7 @@ fun LibraryScreen(
                                         infoText = detailText,
                                         bannerColor = color,
                                         iconEmoji = emoji,
-                                        onViewClick = {
-                                            onDocumentClick(document.id)
-                                        }
+                                        onViewClick = { onDocumentClick(document.id) }
                                     )
                                 }
                             }

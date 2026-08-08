@@ -142,6 +142,7 @@ fun EduUserMessageBubble(
 fun EduAiDetailedResponse(
     content: String,
     citations: List<SourceCitationUiModel>,
+    noAnswer: Boolean = false,
     onSourceClick: (SourceCitationUiModel) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -214,6 +215,29 @@ fun EduAiDetailedResponse(
                         onClick = { onSourceClick(citation) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                }
+            } else if (noAnswer) {
+                // No-answer indicator: BE xác nhận AI không tìm được tài liệu
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(androidx.compose.ui.graphics.Color(0xFFFFF8E1))
+                        .border(
+                            1.dp,
+                            androidx.compose.ui.graphics.Color(0xFFFFB300).copy(alpha = 0.5f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text("⚠️", fontSize = 12.sp)
+                    Text(
+                        text = "Câu trả lời từ kiến thức chung, không trích dẫn tài liệu.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = androidx.compose.ui.graphics.Color(0xFF7B5800)
+                    )
                 }
             }
 

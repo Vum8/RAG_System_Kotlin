@@ -27,8 +27,8 @@ class DocumentViewModel(
         loadLibraryDocuments()
     }
 
-    fun loadLibraryDocuments(search: String = "") {
-        delegate.loadLibraryDocuments(search)
+    fun loadLibraryDocuments(search: String = "", fileType: String? = null, sort: String = "newest") {
+        delegate.loadLibraryDocuments(search, fileType, sort)
     }
 
     fun loadMoreLibraryDocuments() {

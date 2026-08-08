@@ -129,8 +129,11 @@ fun MainTabScreen(
             "documents" -> {
                 LibraryScreen(
                     libraryState = libraryState,
-                    onReloadLibrary = { query ->
-                        documentViewModel.loadLibraryDocuments(query)
+                    onReloadLibrary = { query, fileType, sort ->
+                        documentViewModel.loadLibraryDocuments(query, fileType, sort)
+                    },
+                    onLoadMoreLibrary = {
+                        documentViewModel.loadMoreLibraryDocuments()
                     },
                     onDocumentClick = onDocumentClick,
                     onTabSelected = { selectedTab ->

@@ -95,7 +95,8 @@ class AuthRepository : BaseRepository() {
                 phoneNumber = profileDto?.phone ?: "",
                 avatarUrl = profileDto?.avatarUrl,
                 hasAvatar = profileDto?.avatarAvailable == true,
-                isVerified = profileDto?.status == "ACTIVE"
+                isVerified = profileDto?.status == "ACTIVE",
+                role = profileDto?.role ?: "STUDENT"
             )
         }
     }
@@ -114,7 +115,8 @@ class AuthRepository : BaseRepository() {
                 studentId = profileDto?.studentCode ?: "",
                 phoneNumber = profileDto?.phone ?: "",
                 avatarUrl = null,
-                isVerified = profileDto?.status == "ACTIVE"
+                isVerified = profileDto?.status == "ACTIVE",
+                role = profileDto?.role ?: "STUDENT"
             )
         }
     }

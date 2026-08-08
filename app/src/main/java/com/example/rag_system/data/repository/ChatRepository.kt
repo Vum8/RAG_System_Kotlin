@@ -93,7 +93,8 @@ class ChatRepository : BaseRepository() {
                 content = assistantDto.content ?: (if (assistantDto.noAnswer) "Xin lỗi, tôi không tìm thấy câu trả lời liên quan trong kho tài liệu hiện tại." else ""),
                 isFromUser = false,
                 sendTime = assistantDto.completedAt?.take(16)?.replace("T", " ") ?: "Vừa xong",
-                citations = citationsList
+                citations = citationsList,
+                noAnswer = assistantDto.noAnswer
             )
         }
     }
@@ -124,7 +125,8 @@ class ChatRepository : BaseRepository() {
                     content = dto.content ?: "",
                     isFromUser = dto.senderType.equals("USER", ignoreCase = true),
                     sendTime = dto.completedAt?.take(16)?.replace("T", " ") ?: dto.createdAt?.take(16)?.replace("T", " ") ?: "Vừa xong",
-                    citations = citationsList
+                    citations = citationsList,
+                    noAnswer = dto.noAnswer
                 )
             }
         }

@@ -165,6 +165,7 @@ fun ProfileScreen(
                             userName = user.name,
                             userEmail = user.email,
                             avatarUri = localAvatarUri,
+                            role = user.role,
                             onEditAvatarClick = {
                                 photoPickerLauncher.launch(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)

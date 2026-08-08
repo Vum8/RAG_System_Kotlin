@@ -33,13 +33,14 @@ import androidx.compose.runtime.remember
 
 /**
  * Thẻ thông tin cá nhân trên cùng (ProfileHeaderCard).
- * Hiển thị Avatar tròn lớn, nút sửa ảnh đè lên, Tên, Email và nhãn Đã xác thực.
+ * Hiển thị Avatar tròn lớn, nút sửa ảnh đè lên, Tên, Email, badge vai trò và trạng thái xác thực.
  */
 @Composable
 fun ProfileHeaderCard(
     userName: String,
     userEmail: String,
     avatarUri: Uri?,
+    role: String = "STUDENT",
     onEditAvatarClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -143,28 +144,53 @@ fun ProfileHeaderCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ── Badge Đã xác thực ──
-            Surface(
-                shape = RoundedCornerShape(9999.dp),
-                color = Color(0xFFE6F4EA), // Nền xanh lá nhạt
-                border = BorderStroke(1.dp, Color(0xFF137333)) // Viền xanh lá đậm
+            // ── Badge vai trò + trạng thái xác thực ──
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Badge vai trò
+                val (roleBg, roleText, roleLabel) = when (role.uppercase()) {
+                    "TEACHER" -> Triple(Color(0xFFEEF2FF), Color(0xFF3730A3), "🏫 Giảng viên")
+                    "ADMIN"   -> Triple(Color(0xFFFFF7ED), Color(0xFFC2410C), "🛡️ Quản trị")
+                    else      -> Triple(Color(0xFFEFF6FF), Color(0xFF1D4ED8), "🏫 Sinh viên")
+                }
+                Surface(
+                    shape = RoundedCornerShape(9999.dp),
+                    color = roleBg,
+                    border = BorderStroke(1.dp, roleText.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = "✓",
-                        color = Color(0xFF137333),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        text = roleLabel,
+                        color = roleText,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
-                    Text(
-                        text = "Đã xác thực",
-                        color = Color(0xFF137333),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
+                }
+
+                // Badge Đã xác thực
+                Surface(
+                    shape = RoundedCornerShape(9999.dp),
+                    color = Color(0xFFE6F4EA),
+                    border = BorderStroke(1.dp, Color(0xFF137333))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "✓",
+                            color = Color(0xFF137333),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "Đã xác thực",
+                            color = Color(0xFF137333),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
                 }
             }
         }

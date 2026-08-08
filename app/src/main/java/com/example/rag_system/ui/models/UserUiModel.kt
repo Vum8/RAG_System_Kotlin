@@ -2,6 +2,7 @@ package com.example.rag_system.ui.models
 
 /**
  * UI Model đại diện cho thông tin người dùng (Sinh viên/Giảng viên) hiển thị trên giao diện.
+ * [role]: "STUDENT" | "TEACHER" | "ADMIN" – dùng để hiển thị badge trong ProfileHeaderCard.
  */
 data class UserUiModel(
     val name: String = "",
@@ -10,5 +11,6 @@ data class UserUiModel(
     val phoneNumber: String? = null,
     val avatarUrl: String? = null,
     val hasAvatar: Boolean = false,
-    val isVerified: Boolean = false
+    val isVerified: Boolean = false,
+    val role: String = "STUDENT"
 )

@@ -23,9 +23,11 @@ class DocumentRouteDelegate(
     private var currentPage = 1
     private var isLastPage = false
     private var currentQuery = ""
+    private var currentFileType: String? = null
+    private var currentSort: String = "newest"
     private var isFetching = false
 
-    fun loadLibraryDocuments(search: String = "", isLoadMore: Boolean = false) {
+    fun loadLibraryDocuments(search: String = "", fileType: String? = null, sort: String = "newest", isLoadMore: Boolean = false) {
         if (isFetching) return
         if (isLoadMore && isLastPage) return
 
@@ -35,10 +37,12 @@ class DocumentRouteDelegate(
                 currentPage = 1
                 isLastPage = false
                 currentQuery = search
+                currentFileType = fileType
+                currentSort = sort
                 _libraryState.value = UiLoadState.Loading
             }
 
-            when (val result = documentRepository.getLibraryDocuments(q = currentQuery, page = currentPage)) {
+            when (val result = documentRepository.getLibraryDocuments(q = currentQuery, page = currentPage, fileType = currentFileType, sort = currentSort)) {
                 is ApiResult.Success -> {
                     val newData = result.data
                     if (newData.isEmpty()) {

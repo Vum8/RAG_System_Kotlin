@@ -246,6 +246,7 @@ fun ChatScreen(
                             EduAiDetailedResponse(
                                 content = session.lastMessagePreview,
                                 citations = session.citations,
+                                noAnswer = false,
                                 onSourceClick = { citation ->
                                     activeDocumentCitation = citation
                                     onSourceClick(citation)
@@ -268,6 +269,7 @@ fun ChatScreen(
                         EduAiDetailedResponse(
                             content = message.content,
                             citations = message.citations,
+                            noAnswer = message.noAnswer,
                             onSourceClick = { citation ->
                                 activeDocumentCitation = citation
                                 onSourceClick(citation)
