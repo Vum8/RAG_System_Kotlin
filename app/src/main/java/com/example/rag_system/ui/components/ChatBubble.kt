@@ -144,6 +144,7 @@ fun EduAiDetailedResponse(
     content: String,
     citations: List<SourceCitationUiModel>,
     noAnswer: Boolean = false,
+    sendTime: String = "Vừa xong",
     onSourceClick: (SourceCitationUiModel) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -255,46 +256,53 @@ fun EduAiDetailedResponse(
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = "TRỢ LÝ EDURAG • 09:01",
+                text = "TRỢ LÝ EDURAG • $sendTime",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 ),
                 color = BrandTextSecondary
             )
-
-            if (citations.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "...RAG giúp tối ưu hóa việc truy xuất kiến thức từ các nguồn tài liệu chính thống...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BrandOnSurfaceVariant
-                )
-            }
         }
     }
 }
 
 @Composable
 fun BotLoadingBubble() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    var loadingText by remember { mutableStateOf("Đang tìm kiếm tài liệu liên quan...") }
+    
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(3000)
+        loadingText = "Đang đọc và phân tích ngữ cảnh..."
+        kotlinx.coroutines.delay(4000)
+        loadingText = "Đang tổng hợp câu trả lời..."
+    }
+
+    Row(modifier = Modifier.fillMaxWidth()) {
         EduAiAvatar()
         Spacer(modifier = Modifier.width(12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 8.dp)
+        Surface(
+            shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+            color = BrandSurfaceContainerLow,
+            border = BorderStroke(1.dp, BrandBorderSubtle),
+            modifier = Modifier.padding(vertical = 4.dp)
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = BrandPrimary
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Đang tra cứu tài liệu...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BrandTextSecondary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = BrandPrimary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = loadingText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BrandTextSecondary
+                )
+            }
         }
     }
 }

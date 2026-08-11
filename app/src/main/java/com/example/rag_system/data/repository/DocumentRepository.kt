@@ -115,46 +115,35 @@ class DocumentRepository : BaseRepository() {
 
         return withContext(Dispatchers.IO) {
             try {
-                val file = java.io.File(context.cacheDir, "doc_${docId}.pdf")
-                
-                // 1. Kiểm tra Library document để xem có preview không
-                var usePreview = false
+                // 1. Lấy thông tin tài liệu để đặt tên file cache theo đúng định dạng mở rộng gốc
+                var fileExtension = ".pdf"
+                var cacheKeySuffix = ""
                 try {
                     val detail = documentService.getLibraryDocument(docId.toLong())
                     val dto = detail.data
-                    usePreview = dto?.previewAvailable == true && !dto.previewUrl.isNullOrEmpty()
+                    val rawSuffix = dto?.updatedAt ?: ""
+                    cacheKeySuffix = rawSuffix.replace(Regex("[^a-zA-Z0-9]"), "")
+                    fileExtension = when (dto?.fileType?.lowercase()) {
+                        "docx", "doc" -> ".docx"
+                        "txt" -> ".txt"
+                        else -> ".pdf"
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
+
+                // Chặn đứng hoàn toàn nguy cơ lấy nhầm "doc_3.pdf" cũ kỹ của Github, sử dụng extension chuẩn của file gốc
+                val fileName = if (cacheKeySuffix.isNotEmpty()) "doc_${docId}_${cacheKeySuffix}$fileExtension" else "doc_${docId}_fresh$fileExtension"
+                val file = java.io.File(context.cacheDir, fileName)
  
                 // 2. Cơ chế Cache Offline-First kết hợp xác thực định dạng
                 if (file.exists() && file.length() > 0) {
-                    val isCachedPdf = isPdfFile(file)
-                    // Nếu ở Server đã có bản PDF Preview nhưng Cache đang chứa file gốc Word (.docx) cũ không phải PDF
-                    // -> Xóa file cache cũ để buộc tải lại bản PDF mới.
-                    if (usePreview && !isCachedPdf) {
-                        file.delete()
-                    } else {
-                        onProgress(100)
-                        return@withContext file
-                    }
+                    onProgress(100)
+                    return@withContext file
                 }
 
-                // Tải file mới theo ưu tiên:
-                // 1. /preview — PDF inline khi previewAvailable (DOCX đã có derived PDF)
-                // 2. /download — canonical attachment, Student dùng được cho mọi fileType
-                var responseBody: okhttp3.ResponseBody? = null
-                if (usePreview) {
-                    try {
-                        responseBody = documentService.downloadDocumentPreview(docId)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        // Fallback về /download nếu /preview lỗi (409 PREVIEW_UNAVAILABLE)
-                        responseBody = documentService.downloadDocument(docId)
-                    }
-                } else {
-                    responseBody = documentService.downloadDocument(docId)
-                }
+                // Luôn tải trực tiếp file gốc theo yêu cầu để giữ đúng bản chất, không dùng Preview trung gian
+                val responseBody = documentService.downloadDocument(docId)
                 
                 val contentLength = responseBody!!.contentLength()
                 
@@ -218,7 +207,8 @@ class DocumentRepository : BaseRepository() {
                 (titleLower.contains("slide") || titleLower.contains("bài giảng") ||
                     titleLower.contains("presentation")) -> DocumentFileFormat.SLIDE
             typeLower == "pdf" -> DocumentFileFormat.PDF
-            typeLower == "docx" || typeLower == "doc" || typeLower == "txt" -> DocumentFileFormat.WORD
+            typeLower == "docx" || typeLower == "doc" -> DocumentFileFormat.WORD
+            typeLower == "txt" -> DocumentFileFormat.TXT
             else -> DocumentFileFormat.OTHER
         }
     }

@@ -210,7 +210,8 @@ fun LibraryScreen(
                                         DocumentFileFormat.PDF   -> Color(0xFFFEE2E2) to "PDF" // Đỏ nhạt cho PDF
                                         DocumentFileFormat.SLIDE -> Color(0xFFFEF3C7) to "SLIDE" // Vàng cho Slide
                                         DocumentFileFormat.WORD  -> Color(0xFFDBEAFE) to "WORD" // Xanh dương cho Word
-                                        else                     -> Color(0xFFF3F4F6) to "TXT" // Xám cho Text
+                                        DocumentFileFormat.TXT   -> Color(0xFFE5E7EB) to "TXT"  // Xám cho Text
+                                        else                     -> Color(0xFFF3F4F6) to "FILE" // Xám nhạt cho Loại khác
                                     }
 
                                     val pageText = if (document.pageOrSlideCount > 0) {
@@ -313,7 +314,8 @@ fun LibraryScreen(
                                         DocumentFileFormat.PDF   -> Color(0xFFFEE2E2) to "PDF" // Đỏ nhạt cho PDF
                                         DocumentFileFormat.SLIDE -> Color(0xFFFEF3C7) to "SLIDE" // Vàng cho Slide
                                         DocumentFileFormat.WORD  -> Color(0xFFDBEAFE) to "WORD" // Xanh dương cho Word
-                                        else                     -> Color(0xFFF3F4F6) to "TXT" // Xám cho Text
+                                        DocumentFileFormat.TXT   -> Color(0xFFE5E7EB) to "TXT"  // Xám cho Text
+                                        else                     -> Color(0xFFF3F4F6) to "FILE" // Xám nhạt cho Loại khác
                                     }
 
                                     val pageText = if (document.pageOrSlideCount > 0) {

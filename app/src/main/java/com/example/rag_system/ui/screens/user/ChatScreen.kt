@@ -275,6 +275,7 @@ fun ChatScreen(
                             content = message.content,
                             citations = message.citations,
                             noAnswer = message.noAnswer,
+                            sendTime = message.sendTime,
                             onSourceClick = { citation ->
                                 activeDocumentCitation = citation
                                 onSourceClick(citation)

@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -132,14 +134,15 @@ fun DocumentReaderBottomSheet(
                 EduRAGTopAppBar(
                     applyStatusBarPadding = false,
                     navigationContent = {
-                        Column {
+                        Column(modifier = Modifier.fillMaxWidth(0.85f)) {
                             Text(
                                 text = citation.sourceDocumentName,
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
                                 color = BrandTextPrimary,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                              )
                             Text(
                                 text = "Trang $currentPage",
@@ -187,16 +190,87 @@ fun DocumentReaderBottomSheet(
                             )
                         }
                     } else if (pdfFile != null && pdfFile!!.exists() && !isPdfRenderError) {
-                        // PDF Reader thật
-                        PdfPageViewer(
-                            file = pdfFile!!,
-                            pageNumber = currentPage,
-                            isLandscape = false,
-                            onSingleTap = {},
-                            onPageCountLoaded = { totalPages = it },
-                            onRenderError = { isPdfRenderError = true },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // 1. Dưới cùng là PDF Reader thật (hiển thị bố cục gốc)
+                            PdfPageViewer(
+                                file = pdfFile!!,
+                                pageNumber = currentPage,
+                                isLandscape = false,
+                                onSingleTap = {},
+                                onPageCountLoaded = { totalPages = it },
+                                onRenderError = { isPdfRenderError = true },
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            // 2. Nếu đang ở đúng trang trích dẫn, treo lơ lửng thẻ vàng dạ quang chứa text để bù đắp việc Backend thiếu tọa độ BBox
+                            if (currentPage == citation.pageNumber && citation.rawExtractedText.isNotBlank()) {
+                                var isCitationExpanded by remember { mutableStateOf(true) }
+
+                                if (isCitationExpanded) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(16.dp)
+                                            .fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color(0xFFEEF2FF).copy(alpha = 0.95f),
+                                        shadowElevation = 8.dp
+                                    ) {
+                                        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(4.dp)
+                                                    .fillMaxHeight()
+                                                    .background(BrandPrimary)
+                                            )
+                                            Column(modifier = Modifier.padding(16.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "ĐOẠN TRÍCH DẪN (TRANG $currentPage)",
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                        color = BrandPrimary
+                                                    )
+                                                    IconButton(
+                                                        onClick = { isCitationExpanded = false },
+                                                        modifier = Modifier.size(24.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                                                            contentDescription = "Đóng",
+                                                            tint = BrandPrimary
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = citation.rawExtractedText,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
+                                                    color = Color(0xFF2E2BC2)
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    SmallFloatingActionButton(
+                                        onClick = { isCitationExpanded = true },
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(bottom = 24.dp, end = 24.dp),
+                                        containerColor = BrandPrimary,
+                                        contentColor = Color.White
+                                    ) {
+                                        Icon(
+                                            imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "Mở trích dẫn"
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         // Fallback: Text Reader cho file Word hoặc khi lỗi render PDF
                         val pageText = if (extractedText.isNotEmpty()) {
@@ -207,14 +281,35 @@ fun DocumentReaderBottomSheet(
                             "Đang trích xuất nội dung văn bản..."
                         }
 
-                        // Nếu ở đúng trang trích dẫn, làm nổi bật (highlight) đoạn văn bản AI tham chiếu
+                        // Xử lý thuật toán cắt chuỗi thông minh để làm nổi bật (highlight)
                         val isCitedPage = currentPage == citation.pageNumber
+                        var beforeText = pageText
+                        var highlightText = ""
+                        var afterText = ""
+
+                        if (isCitedPage && citation.rawExtractedText.isNotBlank()) {
+                            val searchStr = citation.rawExtractedText.trim()
+                            val index = pageText.indexOf(searchStr)
+                            
+                            if (index != -1) {
+                                // Nếu tìm thấy chính xác vị trí trong văn bản của trang hiện tại
+                                beforeText = pageText.substring(0, index)
+                                highlightText = pageText.substring(index, index + searchStr.length)
+                                afterText = pageText.substring(index + searchStr.length)
+                            } else {
+                                // Nếu RAG trả về text đã bị biến dạng đôi chút, đưa citation lên đầu trang
+                                beforeText = ""
+                                highlightText = citation.rawExtractedText
+                                afterText = "\n\n--- BẢN GỐC TRANG $currentPage ---\n\n$pageText"
+                            }
+                        }
+
                         DocumentContentArea(
                             chapterTitle = if (extractedText.isNotEmpty()) "Tài liệu trích xuất văn bản" else "Đang xử lý tài liệu",
                             sectionTitle = "Trang số $currentPage",
-                            bodyTextBefore = if (isCitedPage) "" else pageText,
-                            highlightedSnippet = if (isCitedPage) citation.rawExtractedText else "",
-                            bodyTextAfter = if (isCitedPage) pageText.replace(citation.rawExtractedText, "") else "",
+                            bodyTextBefore = beforeText,
+                            highlightedSnippet = highlightText,
+                            bodyTextAfter = afterText,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

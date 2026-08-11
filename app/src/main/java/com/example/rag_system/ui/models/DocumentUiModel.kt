@@ -7,6 +7,7 @@ enum class DocumentFileFormat {
     PDF,
     WORD,
     SLIDE,
+    TXT,
     OTHER
 }
 
