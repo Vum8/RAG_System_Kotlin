@@ -186,8 +186,9 @@ fun DocumentReaderScreen(
                             text = documentTitle,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = BrandTextPrimary,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            maxLines = 1
+                            modifier = Modifier.padding(horizontal = 16.dp).widthIn(max = 200.dp),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     },
                     actionContent = {
