@@ -115,35 +115,59 @@ class DocumentRepository : BaseRepository() {
 
         return withContext(Dispatchers.IO) {
             try {
-                // 1. Lấy thông tin tài liệu để đặt tên file cache theo đúng định dạng mở rộng gốc
+                // 1. Kiểm tra Library document để xem có preview không và lấy chữ ký cache
+                var usePreview = false
                 var fileExtension = ".pdf"
                 var cacheKeySuffix = ""
                 try {
                     val detail = documentService.getLibraryDocument(docId.toLong())
                     val dto = detail.data
+                    usePreview = dto?.previewAvailable == true && !dto.previewUrl.isNullOrEmpty()
                     val rawSuffix = dto?.updatedAt ?: ""
                     cacheKeySuffix = rawSuffix.replace(Regex("[^a-zA-Z0-9]"), "")
-                    fileExtension = when (dto?.fileType?.lowercase()) {
-                        "docx", "doc" -> ".docx"
-                        "txt" -> ".txt"
-                        else -> ".pdf"
+                    
+                    // Tôn trọng quy chuẩn Backend: Nếu có Preview (DOCX -> PDF), CHẮC CHẮN phải lưu là .pdf
+                    // Nếu không có Preview (như TXT), mới lưu theo định dạng gốc
+                    if (!usePreview && dto?.fileType?.lowercase() == "txt") {
+                        fileExtension = ".txt"
+                    } else {
+                        fileExtension = ".pdf"
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
 
-                // Chặn đứng hoàn toàn nguy cơ lấy nhầm "doc_3.pdf" cũ kỹ của Github, sử dụng extension chuẩn của file gốc
+                // Chặn đứng nguy cơ lấy nhầm file cũ, sử dụng extension chuẩn theo quy tắc của Backend
                 val fileName = if (cacheKeySuffix.isNotEmpty()) "doc_${docId}_${cacheKeySuffix}$fileExtension" else "doc_${docId}_fresh$fileExtension"
                 val file = java.io.File(context.cacheDir, fileName)
  
                 // 2. Cơ chế Cache Offline-First kết hợp xác thực định dạng
                 if (file.exists() && file.length() > 0) {
-                    onProgress(100)
-                    return@withContext file
+                    val isCachedPdf = isPdfFile(file)
+                    if (usePreview && !isCachedPdf) {
+                        // Nếu server báo có PDF nhưng máy đang lưu bản gốc (không phải PDF) -> Xóa để tải lại PDF
+                        file.delete()
+                    } else {
+                        onProgress(100)
+                        return@withContext file
+                    }
                 }
 
-                // Luôn tải trực tiếp file gốc theo yêu cầu để giữ đúng bản chất, không dùng Preview trung gian
-                val responseBody = documentService.downloadDocument(docId)
+                // Tải file mới theo ưu tiên quy định bởi Backend:
+                // 1. /preview — PDF inline khi previewAvailable (DOCX đã có derived PDF)
+                // 2. /download — canonical attachment, Student dùng được cho mọi fileType (kể cả txt)
+                var responseBody: okhttp3.ResponseBody? = null
+                if (usePreview) {
+                    try {
+                        responseBody = documentService.downloadDocumentPreview(docId)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // Fallback về /download nếu /preview lỗi (409 PREVIEW_UNAVAILABLE)
+                        responseBody = documentService.downloadDocument(docId)
+                    }
+                } else {
+                    responseBody = documentService.downloadDocument(docId)
+                }
                 
                 val contentLength = responseBody!!.contentLength()
                 

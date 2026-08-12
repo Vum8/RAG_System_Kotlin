@@ -32,7 +32,6 @@ data class LibraryFilter(val label: String, val apiValue: String?)
 private val FILE_TYPE_FILTERS = listOf(
     LibraryFilter("Tất cả",  null),
     LibraryFilter("📄 PDF",  "PDF"),
-    LibraryFilter("📝 DOCX", "DOCX"),
     LibraryFilter("📃 TXT",  "TXT")
 )
 
